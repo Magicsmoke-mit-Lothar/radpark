@@ -50,6 +50,33 @@ stations 1───n docks 1───n parking_sessions n───1 users
 - **parking_sessions**: ein Parkvorgang von Reservierung bis Abholung, inkl. Preis
 - **events**: alles, was passiert ist
 
+## Parkvorgang (Zustandsautomat)
+
+```
+            Bügel öffnet,         Rad erkannt          „Abholen“ → Bügel öffnet,
+ POST /parkings ──▶ reserved ── + Schloss zu ──▶ active ── Sensor: Rad weg ──▶ completed (Preis)
+                       │                           │
+                       │ Bügel leer zu /           │ Bügel geht mit Rad wieder zu
+                       │ Abbruch / Timeout         │ → bleibt active ("pickup_timeout")
+                       ▼                           │
+                   cancelled                       │ Rad weg OHNE „Abholen“
+                                                   └──▶ completed + 🚨 BIKE_REMOVED_UNEXPECTEDLY
+```
+
+- **Nutzer-Aktionen** (parken, abholen, abbrechen): `apps/api/src/parking/service.ts`
+- **Hardware-Reaktionen** (Rad erkannt, Rad weg …): `apps/api/src/parking/lifecycle.ts`
+- **Preis**: `apps/api/src/parking/pricing.ts` – 5 Freiminuten, dann je angefangene Stunde,
+  Tageshöchstpreis 8 Stunden. Mit automatischen Tests (`pnpm test`).
+
+**Schutz gegen Doppelbuchungen** – dreifach:
+1. Eindeutige Teil-Indizes in der Datenbank: pro Dock und pro Nutzer höchstens ein offener Vorgang.
+   Selbst bei einem Programmierfehler kann die Datenbank keine Doppelbuchung speichern.
+2. `SELECT … FOR UPDATE SKIP LOCKED`: Buchen zehn Leute gleichzeitig, bekommt jeder ein anderes Dock.
+3. Hardware-Meldungen und Nutzer-Aktionen sperren dieselbe Dock-Zeile, bevor sie etwas ändern.
+
+**Login ohne Passwort**: E-Mail → 6-stelliger Code (10 Min., max. 5 Versuche) → Token (90 Tage).
+Gespeichert werden nur Hashes von Codes und Tokens.
+
 ## Skalierung – wie das später wächst
 
 Das MVP läuft auf einem Server. Die Architektur ist so gewählt, dass man später ohne Umbau ausbauen kann:
@@ -69,3 +96,5 @@ Das MVP läuft auf einem Server. Die Architektur ist so gewählt, dass man spät
   Zertifikat** und darf nur seine eigenen Topics lesen/schreiben (ACL).
 - Verbindungen nur verschlüsselt (TLS, Port 8883).
 - Befehle wie "entriegeln" nur vom Backend – nie direkt aus der App an den Ständer.
+- Rate-Limiting für `/auth/request-code` (sonst kann jemand fremde Postfächer mit Codes fluten).
+- E-Mail-Versand für Login-Codes anbinden; `DEV_ROUTES` in Produktion immer `false`.

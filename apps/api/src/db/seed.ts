@@ -1,10 +1,10 @@
 /**
  * Testdaten ("Seed") für die Entwicklung.
- * ACHTUNG: löscht vorher alle Stationen, Docks, Nutzer, Parkvorgänge und Events!
+ * ACHTUNG: löscht vorher ALLE Daten (Stationen, Docks, Nutzer, Logins, Parkvorgänge, Events)!
  * Standorte einfach anpassen – z. B. auf deine Stadt.
  */
 import { db, pool } from "./client";
-import { docks, events, parkingSessions, stations, users } from "./schema";
+import { authTokens, docks, events, loginCodes, parkingSessions, stations, users } from "./schema";
 
 const demoStations = [
   { code: "BER-001", name: "Hauptbahnhof Nord", address: "Europaplatz 1, Berlin", lng: 13.3694, lat: 52.5256, dockCount: 8 },
@@ -14,6 +14,8 @@ const demoStations = [
 
 await db.transaction(async (tx) => {
   await tx.delete(events);
+  await tx.delete(authTokens);
+  await tx.delete(loginCodes);
   await tx.delete(parkingSessions);
   await tx.delete(docks);
   await tx.delete(stations);

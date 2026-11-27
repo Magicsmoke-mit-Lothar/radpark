@@ -108,7 +108,9 @@ async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   log("Fahre herunter, Stationen melden sich ab …");
-  await Promise.all([...stations.values()].map((s) => s.shutdown()));
+  // Sicherheitsnetz: Spätestens nach 3 s beenden, auch wenn der Broker nicht antwortet
+  setTimeout(() => process.exit(0), 3_000).unref();
+  await Promise.all([...stations.values()].map((s) => s.shutdown().catch(() => undefined)));
   process.exit(0);
 }
 

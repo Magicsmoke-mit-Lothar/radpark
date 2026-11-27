@@ -70,13 +70,66 @@ sim> hilfe                  → alle Befehle
 
 Was im Backend passiert ist, zeigt das Event-Log: http://localhost:3000/dev/events
 
+> Es darf immer nur **ein** Simulator gleichzeitig laufen – zwei würden sich beim Broker
+> gegenseitig die Verbindung wegnehmen.
+>
 > Die `/dev/*`-Endpunkte funktionieren nur mit `DEV_ROUTES=true` in `apps/api/.env` und sind
 > ausschließlich für die Entwicklung gedacht.
+
+## Parken über die API (so wird es später die App machen)
+
+Backend und Simulator müssen laufen. Dann in einem dritten Terminal:
+
+```bash
+# 1. Login-Code anfordern (in der Entwicklung steht er direkt in der Antwort: "devCode")
+curl -X POST localhost:3000/auth/request-code -H 'content-type: application/json' \
+     -d '{"email":"ich@test.de"}'
+
+# 2. Code eingeben → Token kommt zurück
+curl -X POST localhost:3000/auth/verify -H 'content-type: application/json' \
+     -d '{"email":"ich@test.de","code":"123456"}'
+TOKEN="…hier das Token einfügen…"
+
+# 3. Station-ID heraussuchen und Parken starten → Bügel öffnet sich
+curl localhost:3000/stations
+curl -X POST localhost:3000/parkings -H "authorization: Bearer $TOKEN" \
+     -H 'content-type: application/json' -d '{"stationId":"…"}'
+```
+
+Im **Simulator** jetzt das Rad einstellen, z. B. `parken BER-001 1`. Danach:
+
+```bash
+curl localhost:3000/parkings/current -H "authorization: Bearer $TOKEN"        # läuft, mit Kosten bisher
+curl -X POST localhost:3000/parkings/<id>/pickup -H "authorization: Bearer $TOKEN"  # Abholen → Bügel öffnet
+```
+
+Im Simulator `abholen BER-001 1` → Vorgang beendet, Preis berechnet: `curl localhost:3000/parkings -H "authorization: Bearer $TOKEN"`
+
+### Alle Endpunkte
+
+| Methode & Pfad | Login? | Zweck |
+|---|---|---|
+| `GET /health` | – | Läuft alles? |
+| `GET /stations[?lat&lng&radius]` | – | Stationen (im Umkreis) mit freien Plätzen |
+| `GET /stations/:id` | – | Station mit allen Docks |
+| `POST /auth/request-code` | – | Login-Code per E-Mail anfordern |
+| `POST /auth/verify` | – | Code eingeben → Token |
+| `GET /me` · `POST /auth/logout` | ✔ | Eigenes Konto · Abmelden |
+| `POST /parkings` | ✔ | Parken starten (`stationId`, optional `dockNumber`) |
+| `GET /parkings/current` | ✔ | Laufender Parkvorgang inkl. bisheriger Kosten |
+| `GET /parkings` | ✔ | Verlauf |
+| `POST /parkings/:id/pickup` | ✔ | Rad abholen (Bügel öffnet) |
+| `POST /parkings/:id/cancel` | ✔ | Reservierung abbrechen |
+| `POST /dev/...`, `GET /dev/events` | – | Nur Entwicklung (`DEV_ROUTES=true`) |
+
+Fehler kommen immer als `{ "error": "CODE", "message": "…" }`, z. B. `NO_FREE_DOCK`, `ALREADY_PARKING`,
+`STATION_OFFLINE`. Die App übersetzt den Code in eine verständliche Meldung.
 
 ## Nützliche Befehle
 
 ```bash
 pnpm typecheck        # TypeScript-Fehler im ganzen Projekt finden
+pnpm test             # automatische Tests ausführen
 pnpm dev:reset        # alles auf Anfang: Testdaten neu, Broker & Simulator-Zustand geleert
 pnpm db:generate      # nach Änderungen an apps/api/src/db/schema.ts: neue Migration erzeugen
 pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
@@ -86,7 +139,7 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 
 - [x] **Schritt 1 – Fundament:** Monorepo, Docker, Datenmodell, Ständer-Protokoll, Stations-API
 - [x] **Schritt 2 – Ständer-Simulator + MQTT:** simulierte Ständer melden sich, Backend sieht online/offline und Belegung live
-- [ ] **Schritt 3 – Parkvorgang:** Nutzer-Login, reservieren → entriegeln → einstellen → abholen, Preisberechnung, Event-Log
+- [x] **Schritt 3 – Parkvorgang:** Nutzer-Login, reservieren → entriegeln → einstellen → abholen, Preisberechnung, Event-Log
 - [ ] **Schritt 4 – Mobile App:** Karte, Station wählen, parken, Live-Status
 - [ ] **Schritt 5 – Bezahlung + Admin-Dashboard:** Stripe (Testmodus), Betreiber-Übersicht, Störungen
 - [ ] **Schritt 6 – Betrieb:** Tests, CI, Deployment, Sicherheit (TLS + Zugangsdaten pro Ständer)

@@ -13,6 +13,7 @@
     "dev:api": "pnpm --filter @radpark/api dev",
     "sim": "pnpm --filter @radpark/simulator start",
     "dev:reset": "docker compose restart mosquitto && pnpm db:seed && rm -f apps/simulator/.sim-state.json",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --if-present test"
   }
 }

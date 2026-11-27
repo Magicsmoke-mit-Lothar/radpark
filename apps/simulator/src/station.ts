@@ -88,9 +88,15 @@ export class SimStation {
   /** Sauberes Herunterfahren (z. B. Wartung): meldet sich selbst offline */
   async shutdown() {
     if (!this.client) return;
-    if (this.client.connected) await this.publishStatus(false);
-    await this.client.endAsync();
+    const client = this.client;
     this.client = null;
+    if (client.connected) {
+      await this.publishStatusVia(client, false);
+      await client.endAsync();
+    } else {
+      // Gerade keine Verbindung → nicht auf den Broker warten, sondern sofort aufgeben
+      client.end(true);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -210,8 +216,12 @@ export class SimStation {
   }
 
   private async publishStatus(online: boolean) {
+    if (this.client) await this.publishStatusVia(this.client, online);
+  }
+
+  private async publishStatusVia(client: MqttClient, online: boolean) {
     const msg: StationStatusMsg = { v: PROTOCOL_VERSION, ts: nowIso(), online, firmware: FIRMWARE, dockCount: this.docks.size };
-    await this.client?.publishAsync(topics.status(this.code), JSON.stringify(msg), { qos: 1, retain: true });
+    await client.publishAsync(topics.status(this.code), JSON.stringify(msg), { qos: 1, retain: true });
   }
 
   private async publishDock(n: number) {

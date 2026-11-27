@@ -135,10 +135,58 @@ export const parkingSessions = pgTable(
     reservedAt: timestamp("reserved_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
+    /** Wann der Nutzer "Rad abholen" gedrückt hat (Bügel wurde dafür entriegelt) */
+    pickupRequestedAt: timestamp("pickup_requested_at", { withTimezone: true }),
     priceCents: integer("price_cents"),
     currency: text("currency").notNull().default("EUR"),
+    /** Warum der Vorgang endete, z. B. "BIKE_REMOVED", "RELOCKED_WITHOUT_BIKE", "USER_CANCELLED" */
+    endReason: text("end_reason"),
   },
-  (t) => [index("sessions_user_idx").on(t.userId), index("sessions_dock_idx").on(t.dockId)],
+  (t) => [
+    index("sessions_user_idx").on(t.userId),
+    index("sessions_dock_idx").on(t.dockId),
+    // Die Datenbank selbst garantiert: pro Dock höchstens EIN offener Vorgang (keine Doppelbuchung) …
+    uniqueIndex("sessions_one_open_per_dock")
+      .on(t.dockId)
+      .where(sql`status in ('reserved', 'active')`),
+    // … und pro Nutzer höchstens EIN offener Vorgang (fürs MVP: ein Rad pro Person)
+    uniqueIndex("sessions_one_open_per_user")
+      .on(t.userId)
+      .where(sql`status in ('reserved', 'active')`),
+  ],
+);
+
+/** Einmal-Codes für den Login per E-Mail (gespeichert wird nur ein Hash, nie der Code selbst) */
+export const loginCodes = pgTable(
+  "login_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_codes_email_idx").on(t.email)],
+);
+
+/**
+ * Anmelde-Tokens ("Schlüssel", den die App bei jeder Anfrage mitschickt).
+ * Wir speichern nur den Hash – selbst wer die Datenbank klaut, kann sich damit nicht einloggen.
+ */
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("auth_tokens_hash_idx").on(t.tokenHash)],
 );
 
 /**
