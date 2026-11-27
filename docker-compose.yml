@@ -1,0 +1,32 @@
+# Lokale Infrastruktur für die Entwicklung.
+# Start:  pnpm infra:up      Stopp:  pnpm infra:down
+services:
+  # Datenbank: PostgreSQL mit PostGIS-Erweiterung (für Geo-Abfragen wie "Ständer im Umkreis von 500 m")
+  postgres:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_USER: radpark
+      POSTGRES_PASSWORD: radpark
+      POSTGRES_DB: radpark
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radpark"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # MQTT-Broker: das "Postamt" zwischen Backend und Fahrradständern
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883" # MQTT (Ständer, Backend)
+      - "9001:9001" # MQTT über WebSocket (z. B. für Debug-Tools im Browser)
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+volumes:
+  pgdata:
