@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { AppText, Card } from '@/components/ui';
+import { WalletCard } from '@/components/wallet-card';
 import { Spacing, WebTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
@@ -22,8 +23,9 @@ export default function ProfileScreen() {
           <AppText variant="small">Angemeldet als</AppText>
           <AppText variant="heading">{user?.email ?? '…'}</AppText>
         </Card>
+        <WalletCard />
         <Card>
-          <AppText variant="small">Bald hier: Zahlungsmethoden, Abzeichen & deine CO₂-Bilanz 🌱</AppText>
+          <AppText variant="small">Bald hier: Abzeichen & deine CO₂-Bilanz 🌱</AppText>
         </Card>
         <Button title="Abmelden" variant="secondary" onPress={signOut} />
         <AppText variant="small" style={styles.tech}>

@@ -10,7 +10,7 @@ import { CommandType } from "@radpark/protocol";
 import { currentUserId, requireAdmin } from "../auth/guard";
 import { config } from "../config";
 import { db } from "../db/client";
-import { docks, events, parkingSessions, stations, users } from "../db/schema";
+import { docks, events, parkingSessions, stations, topups, users } from "../db/schema";
 import { AppError, parseInput } from "../errors";
 import { recordEvent } from "../events";
 import { CommandTimeoutError, type MqttGateway } from "../mqtt/connection";
@@ -56,11 +56,25 @@ export async function adminRoutes(app: FastifyInstance, opts: { mqtt: MqttGatewa
 
     const [newUsers] = await db.select({ n: count() }).from(users).where(gte(users.createdAt, startOfToday));
 
+    // Guthaben: Summe aller Kundenguthaben (das "schulden" wir den Nutzern) + Aufladungen heute
+    const [balances] = await db.select({ total: sum(users.balanceCents).mapWith(Number) }).from(users);
+    const [topupsToday] = await db
+      .select({ n: count(), totalCents: sum(topups.amountCents).mapWith(Number) })
+      .from(topups)
+      .where(and(eq(topups.status, "succeeded"), gte(topups.completedAt, startOfToday)));
+
     return {
       stations: stationStats,
       docks: dockStats,
       openSessions: open!.n,
-      today: { completedSessions: today!.completed, revenueCents: today!.revenueCents ?? 0, newUsers: newUsers!.n },
+      today: {
+        completedSessions: today!.completed,
+        revenueCents: today!.revenueCents ?? 0,
+        newUsers: newUsers!.n,
+        topups: topupsToday!.n,
+        topupCents: topupsToday!.totalCents ?? 0,
+      },
+      wallet: { totalBalanceCents: balances!.total ?? 0 },
     };
   });
 

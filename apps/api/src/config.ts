@@ -23,6 +23,27 @@ const ConfigSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+
+  // --- Bezahlung / Guthaben ---
+  /**
+   * Stripe-Geheimschlüssel. ABSICHTLICH nur TEST-Schlüssel erlaubt (sk_test_… / rk_test_…):
+   * Mit einem Live-Schlüssel (echtes Geld!) startet das Backend gar nicht erst.
+   */
+  STRIPE_SECRET_KEY: z
+    .string()
+    .trim()
+    .regex(/^(sk|rk)_test_/, "Nur Stripe-TESTschlüssel erlaubt (beginnen mit sk_test_) – kein Echtgeld!")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  /**
+   * Womit wird Guthaben aufgeladen?
+   *  stripe = Stripe-Testmodus (Testkarten, kein echtes Geld)
+   *  fake   = sofortige Testgutschrift ohne Stripe (nur mit DEV_ROUTES=true)
+   * Leer lassen = automatisch: stripe, wenn ein Schlüssel da ist, sonst fake.
+   */
+  PAYMENT_PROVIDER: z.enum(["stripe", "fake"]).optional(),
+  /** So viel Guthaben braucht man mindestens, um einen Parkvorgang zu starten (Cent) */
+  MIN_START_BALANCE_CENTS: z.coerce.number().int().min(0).default(100),
 });
 
 const parsed = ConfigSchema.safeParse(process.env);
@@ -31,4 +52,14 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-export const config = parsed.data;
+const paymentProvider = parsed.data.PAYMENT_PROVIDER ?? (parsed.data.STRIPE_SECRET_KEY ? "stripe" : "fake");
+if (paymentProvider === "stripe" && !parsed.data.STRIPE_SECRET_KEY) {
+  console.error("❌ PAYMENT_PROVIDER=stripe, aber STRIPE_SECRET_KEY fehlt in der .env");
+  process.exit(1);
+}
+if (paymentProvider === "fake" && !parsed.data.DEV_ROUTES) {
+  console.error("❌ Testzahlungen (PAYMENT_PROVIDER=fake) sind nur mit DEV_ROUTES=true erlaubt");
+  process.exit(1);
+}
+
+export const config = { ...parsed.data, PAYMENT_PROVIDER: paymentProvider };

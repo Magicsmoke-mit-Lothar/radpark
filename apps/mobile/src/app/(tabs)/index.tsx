@@ -15,7 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { distanceMeters, useUserLocation } from '@/hooks/use-user-location';
 import type { Parking, Station } from '@/lib/api';
 import { errorMessage, formatDistance, formatMoney } from '@/lib/format';
-import { useCurrentParking, useStartParking, useStations } from '@/lib/queries';
+import { useCurrentParking, useStartParking, useStations, useWallet } from '@/lib/queries';
 
 const CARD_HEIGHT = 230;
 
@@ -78,6 +78,8 @@ export default function MapScreen() {
 function StationCard({ station, distance, current }: { station: Station; distance: number | null; current: Parking | null }) {
   const c = useTheme();
   const start = useStartParking();
+  const wallet = useWallet();
+  const balanceTooLow = wallet.data ? wallet.data.balanceCents < wallet.data.minStartBalanceCents : false;
 
   let button: { title: string; disabled?: boolean; onPress: () => void };
   if (current) {
@@ -86,6 +88,8 @@ function StationCard({ station, distance, current }: { station: Station; distanc
     button = { title: 'Station gerade offline', disabled: true, onPress: () => {} };
   } else if (station.freeDocks === 0) {
     button = { title: 'Kein Platz frei', disabled: true, onPress: () => {} };
+  } else if (balanceTooLow) {
+    button = { title: 'Erst Guthaben aufladen', onPress: () => router.navigate('/profile') };
   } else {
     button = {
       title: 'Hier parken',
@@ -112,6 +116,11 @@ function StationCard({ station, distance, current }: { station: Station; distanc
         {formatMoney(station.pricePerHourCents, station.currency)} pro Stunde · erste 5 Min. gratis
         {distance !== null ? ` · ${formatDistance(distance)} entfernt` : ''}
       </AppText>
+      {wallet.data && (
+        <AppText variant="small" style={{ color: balanceTooLow ? c.danger : c.textSecondary }}>
+          Dein Guthaben: {formatMoney(wallet.data.balanceCents, wallet.data.currency)}
+        </AppText>
+      )}
       {start.isError && <Banner>{errorMessage(start.error)}</Banner>}
       <Button title={button.title} onPress={button.onPress} disabled={button.disabled} loading={start.isPending} />
     </Card>

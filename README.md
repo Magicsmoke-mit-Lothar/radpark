@@ -125,6 +125,28 @@ Weitere Admins freischalten: `pnpm admin:grant name@example.com`
 Regeln: Ein gestörtes Dock lässt sich erst freigeben, wenn die Hardware keine Störung mehr meldet.
 Ein gebuchtes Dock lässt sich nicht sperren. Entriegeln eines belegten Docks fragt vorher nach.
 
+## Guthaben & Bezahlung (nur TESTMODUS – kein Echtgeld)
+
+Parken wird vom **Guthaben** bezahlt. Aufladen geht im **Profil** (5 €, 10 €, 20 €); zum Starten
+eines Parkvorgangs braucht man mindestens 1 € (`MIN_START_BALANCE_CENTS`). Abholen geht immer –
+notfalls rutscht das Guthaben ins Minus und muss vor dem nächsten Parken ausgeglichen werden.
+
+Zwei Test-Varianten, beide **ohne echtes Geld**:
+
+| `STRIPE_SECRET_KEY` in `apps/api/.env` | Was passiert beim Aufladen |
+|---|---|
+| leer | **Testgutschrift** – Guthaben sofort da, keine Bezahlseite |
+| `sk_test_…` | **Stripe-Testmodus** – echte Stripe-Bezahlseite, bezahlt wird mit der Testkarte `4242 4242 4242 4242` (Datum in der Zukunft, beliebige Prüfziffer) |
+
+Ein Live-Schlüssel (`sk_live_…`) wird **abgelehnt** – das Backend startet dann gar nicht.
+
+**Stripe-Testmodus einrichten:** kostenloses Konto auf stripe.com → Dashboard im **Testmodus** →
+*Entwickler → API-Schlüssel* → „Geheimer Schlüssel“ (`sk_test_…`) kopieren → in `apps/api/.env`
+bei `STRIPE_SECRET_KEY=` eintragen → Backend neu starten. (Den Schlüssel nie ins Git oder in Chats!)
+
+**Gebühren testen ohne zu warten:** `POST /dev/sessions/<id>/backdate {"minutes": 130}` verlegt den
+Start eines laufenden Parkvorgangs in die Vergangenheit („Zeitreise“, nur mit `DEV_ROUTES=true`).
+
 ## Parken über die API (so macht es die App im Hintergrund)
 
 Backend und Simulator müssen laufen. Dann in einem dritten Terminal:
@@ -169,6 +191,8 @@ Im Simulator `abholen BER-001 1` → Vorgang beendet, Preis berechnet: `curl loc
 | `GET /parkings` | ✔ | Verlauf |
 | `POST /parkings/:id/pickup` | ✔ | Rad abholen (Bügel öffnet) |
 | `POST /parkings/:id/cancel` | ✔ | Reservierung abbrechen |
+| `GET /wallet` | ✔ | Guthaben, Kontoauszug, Aufladeoptionen |
+| `POST /wallet/topups` · `/wallet/topups/:id/confirm` | ✔ | Aufladung starten · nach Bezahlung bestätigen |
 | `GET /admin/overview`, `/admin/stations`, `/admin/sessions/open`, `/admin/events` | Admin | Dashboard-Daten |
 | `POST /admin/docks/:id/release` · `/disable` · `/command` | Admin | Dock freigeben · sperren · Service-Befehl |
 | `POST /dev/...`, `GET /dev/events` | – | Nur Entwicklung (`DEV_ROUTES=true`) |
@@ -194,7 +218,8 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 - [x] **Schritt 4 – Mobile App (Android):** Login, Karte, parken, Live-Status, Abholen, Verlauf
   - [ ] später: iOS testen, Live-Updates per WebSocket statt Nachfragen, „Navigation zur Station“
 - [x] **Schritt 5a – Admin-Dashboard:** Kennzahlen, Stationen live, Störungen beheben, Event-Log, Admin-Rolle
-- [ ] **Schritt 5b – Bezahlung:** Stripe (Testmodus), Karte hinterlegen, nach dem Abholen abbuchen
+- [x] **Schritt 5b – Guthaben:** aufladen (Testgutschrift / Stripe-Testmodus), Abbuchung nach dem Parken, Kontoauszug
+  - [ ] Stripe-Testmodus mit echten Testschlüsseln durchspielen · Stripe-Webhooks (brauchen öffentliche Adresse → Schritt 6)
 - [ ] **Schritt 6 – Betrieb:** Tests, CI, Deployment, Sicherheit (TLS + Zugangsdaten pro Ständer)
 - [ ] **Schritt 7 – Hardware-Prototyp:** ESP32-Firmware mit demselben Protokoll wie der Simulator
 - [ ] **Schritt 8 – Gamification:** Punkte, Streaks, Abzeichen, CO₂-Bilanz – berechnet aus dem Event-Log

@@ -4,7 +4,7 @@
  * Standorte einfach anpassen – z. B. auf deine Stadt.
  */
 import { db, pool } from "./client";
-import { authTokens, docks, events, loginCodes, parkingSessions, stations, users } from "./schema";
+import { authTokens, docks, events, loginCodes, parkingSessions, stations, topups, users, walletTransactions } from "./schema";
 
 const demoStations = [
   { code: "BER-001", name: "Hauptbahnhof Nord", address: "Europaplatz 1, Berlin", lng: 13.3694, lat: 52.5256, dockCount: 8 },
@@ -14,6 +14,8 @@ const demoStations = [
 
 await db.transaction(async (tx) => {
   await tx.delete(events);
+  await tx.delete(walletTransactions);
+  await tx.delete(topups);
   await tx.delete(authTokens);
   await tx.delete(loginCodes);
   await tx.delete(parkingSessions);

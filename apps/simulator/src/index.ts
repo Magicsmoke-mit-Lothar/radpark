@@ -51,7 +51,14 @@ const saved: SavedState = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE
 
 const stations = new Map<string, SimStation>();
 function saveState() {
-  const out: SavedState = {};
+  // Nur die EIGENEN Stationen aktualisieren – laufen zwei Simulatoren mit verschiedenen
+  // Stationen (z. B. SIM_STATIONS="TST-001:4"), überschreiben sie sich nicht gegenseitig.
+  let out: SavedState = {};
+  try {
+    out = JSON.parse(readFileSync(STATE_FILE, "utf8"));
+  } catch {
+    // Datei fehlt oder ist kaputt → neu anlegen
+  }
   for (const s of stations.values()) out[s.code] = Object.fromEntries(s.docks);
   writeFileSync(STATE_FILE, JSON.stringify(out, null, 2));
 }

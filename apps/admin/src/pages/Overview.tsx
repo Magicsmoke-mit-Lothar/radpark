@@ -28,6 +28,8 @@ export function OverviewPage() {
         <Tile label="Umsatz heute" value={money(o.today.revenueCents)} />
         <Tile label="Parkvorgänge heute" value={String(o.today.completedSessions)} />
         <Tile label="Neue Nutzer heute" value={String(o.today.newUsers)} />
+        <Tile label="Aufladungen heute" value={`${money(o.today.topupCents)} (${o.today.topups}×)`} />
+        <Tile label="Kundenguthaben gesamt" value={money(o.wallet.totalBalanceCents)} />
       </section>
 
       <section className="panel">

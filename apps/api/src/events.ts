@@ -21,6 +21,11 @@ export type EventType =
   // Nutzer
   | "user.registered"
   | "user.login"
+  // Guthaben
+  | "wallet.topup_started"
+  | "wallet.topup_succeeded"
+  | "wallet.topup_failed"
+  | "wallet.charged"
   // Parkvorgänge
   | "session.reserved"
   | "session.started"

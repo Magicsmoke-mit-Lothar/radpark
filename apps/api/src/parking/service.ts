@@ -10,7 +10,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { and, asc, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { config } from "../config";
 import { db } from "../db/client";
-import { docks, parkingSessions, stations } from "../db/schema";
+import { docks, parkingSessions, stations, users } from "../db/schema";
 import { AppError, isUniqueViolation } from "../errors";
 import { recordEvent } from "../events";
 import type { MqttGateway } from "../mqtt/connection";
@@ -50,6 +50,11 @@ export class ParkingService {
         const [station] = await tx.select().from(stations).where(eq(stations.id, stationId));
         if (!station) throw new AppError(404, "STATION_NOT_FOUND", "Station nicht gefunden");
         if (!station.online) throw new AppError(409, "STATION_OFFLINE", "Station ist gerade nicht erreichbar");
+
+        const [user] = await tx.select({ balanceCents: users.balanceCents }).from(users).where(eq(users.id, userId));
+        if (user!.balanceCents < config.MIN_START_BALANCE_CENTS) {
+          throw new AppError(402, "INSUFFICIENT_BALANCE", "Bitte lade zuerst Guthaben auf");
+        }
 
         const [dock] = await tx
           .select()

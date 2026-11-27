@@ -11,6 +11,9 @@ import { parkingRoutes } from "./parking/routes";
 import { ParkingService } from "./parking/service";
 import { devRoutes } from "./routes/dev";
 import { stationRoutes } from "./routes/stations";
+import { FakeProvider, StripeProvider } from "./wallet/providers";
+import { walletRoutes } from "./wallet/routes";
+import { WalletService } from "./wallet/service";
 
 /** Baut die Web-App zusammen (getrennt von server.ts, damit wir sie später in Tests starten können) */
 export async function buildApp() {
@@ -22,13 +25,29 @@ export async function buildApp() {
   const mqtt = new MqttGateway(app.log);
   const parking = new ParkingService(mqtt, app.log);
 
+  // Guthaben – Zahlungsanbieter je nach Konfiguration (NUR Testmodus, siehe config.ts)
+  const paymentProvider =
+    config.PAYMENT_PROVIDER === "stripe" ? new StripeProvider(config.STRIPE_SECRET_KEY!) : new FakeProvider();
+  const wallet = new WalletService(paymentProvider, app.log);
+  app.log.info(
+    paymentProvider.name === "stripe"
+      ? "💳 Bezahlung: Stripe-TESTMODUS (Testkarten, kein Echtgeld)"
+      : "💳 Bezahlung: interne Testgutschrift (kein Stripe-Schlüssel gesetzt)",
+  );
+
   // Hintergrund-Job: hängengebliebene Reservierungen aufräumen
   const expiryTimer = setInterval(() => {
     parking.expireStaleReservations().catch((err) => app.log.error({ err }, "Aufräumen fehlgeschlagen"));
   }, 15_000);
 
+  // Hintergrund-Job: offene Aufladungen beim Zahlungsanbieter abgleichen
+  const topupTimer = setInterval(() => {
+    wallet.reconcilePending().catch((err) => app.log.error({ err }, "Aufladungs-Abgleich fehlgeschlagen"));
+  }, 30_000);
+
   app.addHook("onClose", async () => {
     clearInterval(expiryTimer);
+    clearInterval(topupTimer);
     await mqtt.close();
   });
 
@@ -62,6 +81,7 @@ export async function buildApp() {
   await app.register(stationRoutes);
   await app.register(authRoutes);
   await app.register(parkingRoutes, { parking });
+  await app.register(walletRoutes, { wallet });
   await app.register(adminRoutes, { mqtt });
 
   if (config.DEV_ROUTES) {

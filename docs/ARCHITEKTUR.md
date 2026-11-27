@@ -77,6 +77,25 @@ stations 1───n docks 1───n parking_sessions n───1 users
 **Login ohne Passwort**: E-Mail → 6-stelliger Code (10 Min., max. 5 Versuche) → Token (90 Tage).
 Gespeichert werden nur Hashes von Codes und Tokens.
 
+## Guthaben (Wallet)
+
+```
+Aufladen:  App → POST /wallet/topups → Stripe-Bezahlseite (Testmodus) → zurück in die App
+           → POST /wallet/topups/:id/confirm → Backend fragt Stripe "bezahlt?" → Gutschrift
+Parken:    Rad entnommen → Parkvorgang beendet + Preis vom Guthaben abgebucht (EINE Transaktion)
+```
+
+- **Buchungsjournal** (`wallet_transactions`): jede Gut-/Lastschrift eine Zeile, nie geändert.
+  `users.balance_cents` wird nur in derselben Transaktion geändert → Summe der Buchungen = Kontostand.
+- **Nie doppelt:** eindeutige Indizes – eine Aufladung wird höchstens einmal gutgeschrieben, ein
+  Parkvorgang höchstens einmal abgebucht (auch wenn Bestätigungen doppelt eintreffen).
+- **Gutschrift erst nach Rückfrage beim Zahlungsanbieter** – die Rückleitung von Stripe allein
+  zählt nicht (die könnte jeder aufrufen). Ein Hintergrund-Job gleicht offene Aufladungen alle 30 s ab.
+- **Zahlungsanbieter austauschbar** (`src/wallet/providers.ts`): `StripeProvider` / `FakeProvider`.
+- **Warum Guthaben statt Abbuchung pro Parkvorgang?** Kartenzahlungen kosten eine feste Gebühr pro
+  Zahlung – bei 0,50 € Parkgebühr wäre das unwirtschaftlich. Eine Aufladung = eine Gebühr.
+- **Nur Testmodus:** `config.ts` lehnt Live-Schlüssel ab.
+
 ## Mobile App (`apps/mobile`)
 
 | Baustein | Wofür |

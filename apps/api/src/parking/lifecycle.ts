@@ -17,6 +17,7 @@ import type { DockStateMsg } from "@radpark/protocol";
 import type { Executor } from "../db/client";
 import { docks, parkingSessions, stations } from "../db/schema";
 import { recordEvent } from "../events";
+import { postWalletTransaction } from "../wallet/service";
 import { calculatePriceCents } from "./pricing";
 
 type Dock = typeof docks.$inferSelect;
@@ -70,7 +71,7 @@ export async function applyDockStateToSession(
   // --- aktiv → beendet (Rad entnommen) ----------------------------------------
   if (session.status === "active" && before.bikePresent && !msg.bikePresent) {
     const [station] = await tx
-      .select({ pricePerHourCents: stations.pricePerHourCents, currency: stations.currency })
+      .select({ name: stations.name, pricePerHourCents: stations.pricePerHourCents, currency: stations.currency })
       .from(stations)
       .where(eq(stations.id, before.stationId));
     const priceCents = calculatePriceCents(session.startedAt ?? session.reservedAt, now, station!.pricePerHourCents);
@@ -84,6 +85,20 @@ export async function applyDockStateToSession(
       currency: station!.currency,
     });
     await tx.update(docks).set({ status: freeStatus }).where(eq(docks.id, before.id));
+
+    // Vom Guthaben abbuchen – in DERSELBEN Transaktion: Parkvorgang beendet ⇔ Betrag abgebucht.
+    // Das Guthaben darf dabei ins Minus gehen: Wir halten niemals ein Rad fest, nur weil das
+    // Guthaben nicht reicht. Vor dem NÄCHSTEN Parken muss dann aufgeladen werden.
+    if (priceCents > 0) {
+      const balanceCents = await postWalletTransaction(tx, {
+        userId: session.userId,
+        type: "parking",
+        amountCents: -priceCents,
+        sessionId: session.id,
+        description: `Parken ${station!.name} · Platz ${before.number}`,
+      });
+      await recordEvent({ ...ev, type: "wallet.charged", payload: { priceCents, balanceCents } }, tx);
+    }
     await recordEvent({ ...ev, type: "session.completed", payload: { priceCents, expected } }, tx);
     if (expected) log.info({ sessionId: session.id, priceCents }, "✅ Parkvorgang beendet");
     else log.warn({ sessionId: session.id }, "🚨 Rad entnommen OHNE Abholung – Diebstahl oder Sensorfehler?");

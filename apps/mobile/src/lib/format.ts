@@ -54,6 +54,9 @@ const MESSAGES: Record<string, string> = {
   UNLOCK_FAILED: 'Der Bügel konnte nicht geöffnet werden. Bitte versuche es erneut.',
   NOT_ACTIVE: 'Dieser Parkvorgang läuft nicht mehr.',
   CANNOT_CANCEL: 'Dein Rad steht schon im Ständer – nutze „Rad abholen“.',
+  INSUFFICIENT_BALANCE: 'Dein Guthaben reicht nicht. Bitte lade im Profil Guthaben auf.',
+  INVALID_AMOUNT: 'Dieser Betrag ist nicht möglich.',
+  PAYMENT_PROVIDER_ERROR: 'Der Zahlungsdienst ist gerade nicht erreichbar. Bitte versuche es später erneut.',
 };
 
 export function errorMessage(err: unknown): string {

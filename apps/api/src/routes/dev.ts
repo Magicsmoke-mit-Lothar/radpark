@@ -8,7 +8,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { CommandType } from "@radpark/protocol";
 import { db } from "../db/client";
-import { docks, events, stations } from "../db/schema";
+import { docks, events, parkingSessions, stations } from "../db/schema";
 import { recordEvent } from "../events";
 import { CommandTimeoutError, type MqttGateway } from "../mqtt/connection";
 
@@ -49,6 +49,25 @@ export async function devRoutes(app: FastifyInstance, opts: { mqtt: MqttGateway 
       }
       throw err;
     }
+  });
+
+  /**
+   * POST /dev/sessions/:id/backdate {"minutes": 130}
+   * "Zeitreise": verlegt den Start eines laufenden Parkvorgangs in die Vergangenheit –
+   * so kann man Gebühren testen, ohne stundenlang zu warten.
+   */
+  app.post("/dev/sessions/:id/backdate", async (req, reply) => {
+    const params = z.object({ id: z.uuid() }).safeParse(req.params);
+    const body = z.object({ minutes: z.number().int().positive().max(60 * 24 * 30) }).safeParse(req.body);
+    if (!params.success || !body.success) return reply.code(400).send({ error: 'Erwartet {"minutes": 130}' });
+    const startedAt = new Date(Date.now() - body.data.minutes * 60_000);
+    const [s] = await db
+      .update(parkingSessions)
+      .set({ startedAt, reservedAt: startedAt })
+      .where(and(eq(parkingSessions.id, params.data.id), eq(parkingSessions.status, "active")))
+      .returning({ id: parkingSessions.id });
+    if (!s) return reply.code(404).send({ error: "Kein laufender (aktiver) Parkvorgang mit dieser ID" });
+    return { ok: true, startedAt };
   });
 
   /** GET /dev/events → die letzten 50 Einträge aus dem Event-Log */

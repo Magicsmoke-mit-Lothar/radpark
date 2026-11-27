@@ -48,6 +48,25 @@ export interface User {
   displayName: string | null;
 }
 
+export interface WalletTx {
+  id: string;
+  type: 'topup' | 'parking' | 'bonus' | 'refund' | 'adjustment';
+  amountCents: number;
+  balanceAfterCents: number;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface Wallet {
+  balanceCents: number;
+  currency: string;
+  transactions: WalletTx[];
+  topupOptions: number[];
+  minStartBalanceCents: number;
+  provider: 'stripe' | 'fake';
+  testMode: boolean;
+}
+
 /** Fehler vom Backend, z. B. { error: "NO_FREE_DOCK", message: "…" } */
 export class ApiError extends Error {
   constructor(
@@ -120,4 +139,9 @@ export const api = {
   startParking: (stationId: string) => request<Parking>('POST', '/parkings', { stationId }),
   pickup: (id: string) => request<Parking>('POST', `/parkings/${id}/pickup`),
   cancel: (id: string) => request<Parking>('POST', `/parkings/${id}/cancel`),
+
+  wallet: () => request<Wallet>('GET', '/wallet'),
+  startTopup: (amountCents: number, returnUrl: string) =>
+    request<{ topupId: string; status: string; checkoutUrl: string | null }>('POST', '/wallet/topups', { amountCents, returnUrl }),
+  confirmTopup: (id: string) => request<{ status: string; balanceCents: number }>('POST', `/wallet/topups/${id}/confirm`),
 };

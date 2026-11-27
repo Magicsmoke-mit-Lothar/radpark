@@ -17,7 +17,7 @@ import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import type { Parking } from '@/lib/api';
 import { endReasonText, errorMessage, formatClock, formatDuration, formatMoney } from '@/lib/format';
-import { useCancelParking, useCurrentParking, useHistory, usePickup } from '@/lib/queries';
+import { useCancelParking, useCurrentParking, useHistory, usePickup, useWallet } from '@/lib/queries';
 
 export default function ParkingScreen() {
   const c = useTheme();
@@ -123,11 +123,14 @@ function Active({ parking }: { parking: Parking }) {
 
 function Finished({ id, onDone }: { id: string; onDone: () => void }) {
   const history = useHistory();
+  const wallet = useWallet();
   const { refetch } = history;
-  // Verlauf frisch laden – der gerade beendete Vorgang soll mit Endpreis drinstehen
+  const { refetch: refetchWallet } = wallet;
+  // Verlauf & Guthaben frisch laden – der beendete Vorgang soll mit Endpreis und Abbuchung erscheinen
   useEffect(() => {
     refetch();
-  }, [id, refetch]);
+    refetchWallet();
+  }, [id, refetch, refetchWallet]);
   const p = history.data?.find((h) => h.id === id);
   if (!p) return null;
 
@@ -144,6 +147,8 @@ function Finished({ id, onDone }: { id: string; onDone: () => void }) {
         <>
           {duration !== null && <AppText variant="secondary">Parkdauer: {formatDuration(duration)}</AppText>}
           <AppText variant="title">{formatMoney(p.priceCents ?? 0, p.currency)}</AppText>
+          {(p.priceCents ?? 0) > 0 && <AppText variant="secondary">wurde von deinem Guthaben abgebucht</AppText>}
+          {wallet.data && <AppText variant="small">Neues Guthaben: {formatMoney(wallet.data.balanceCents, wallet.data.currency)}</AppText>}
         </>
       )}
       <Button title="OK" onPress={onDone} style={styles.fullWidth} />

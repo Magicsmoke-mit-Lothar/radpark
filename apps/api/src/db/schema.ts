@@ -121,6 +121,11 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   displayName: text("display_name"),
   role: userRole("role").notNull().default("user"),
+  /**
+   * Aktuelles Guthaben in Cent. Wird IMMER zusammen mit einer Zeile in wallet_transactions
+   * geändert (in derselben Transaktion) – die Summe aller Buchungen ergibt genau diesen Wert.
+   */
+  balanceCents: integer("balance_cents").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -219,5 +224,61 @@ export const events = pgTable(
     index("events_type_idx").on(t.type),
     index("events_user_idx").on(t.userId),
     index("events_created_idx").on(t.createdAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Guthaben ("Wallet")
+// ---------------------------------------------------------------------------
+
+export const topupStatus = pgEnum("topup_status", ["pending", "succeeded", "failed", "expired"]);
+export const walletTxType = pgEnum("wallet_tx_type", ["topup", "parking", "bonus", "refund", "adjustment"]);
+
+/** Eine Aufladung: angelegt beim Klick auf "Aufladen", gutgeschrieben erst nach bestätigter Zahlung */
+export const topups = pgTable(
+  "topups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull().default("EUR"),
+    status: topupStatus("status").notNull().default("pending"),
+    /** "stripe" oder "fake" */
+    provider: text("provider").notNull(),
+    /** Referenz beim Zahlungsanbieter, z. B. die Stripe-Checkout-Session-ID */
+    providerRef: text("provider_ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [index("topups_user_idx").on(t.userId), index("topups_status_idx").on(t.status)],
+);
+
+/**
+ * Buchungsjournal ("Ledger") – wie ein Kontoauszug: jede Gut- und Lastschrift ist eine Zeile,
+ * die NIE geändert oder gelöscht wird. Positiv = Gutschrift, negativ = Abbuchung.
+ */
+export const walletTransactions = pgTable(
+  "wallet_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    type: walletTxType("type").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    /** Kontostand NACH dieser Buchung – macht den Auszug ohne Nachrechnen lesbar */
+    balanceAfterCents: integer("balance_after_cents").notNull(),
+    topupId: uuid("topup_id").references(() => topups.id),
+    sessionId: uuid("session_id").references(() => parkingSessions.id),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("wallet_tx_user_idx").on(t.userId, t.createdAt),
+    // Eine Aufladung kann nur EINMAL gutgeschrieben werden, ein Parkvorgang nur EINMAL abgebucht
+    uniqueIndex("wallet_tx_topup_once").on(t.topupId).where(sql`topup_id is not null`),
+    uniqueIndex("wallet_tx_session_once").on(t.sessionId).where(sql`session_id is not null`),
   ],
 );

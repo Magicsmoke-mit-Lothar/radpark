@@ -12,6 +12,7 @@ const FILTERS = [
   { value: 'station.', label: 'Stationen' },
   { value: 'command.', label: 'Befehle' },
   { value: 'user.', label: 'Nutzer' },
+  { value: 'wallet.', label: 'Guthaben' },
   { value: 'dock.fault', label: 'Nur Störungen' },
 ];
 

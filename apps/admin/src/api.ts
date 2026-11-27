@@ -64,7 +64,9 @@ export interface Overview {
   stations: { total: number; online: number };
   docks: Record<DockStatus, number>;
   openSessions: number;
-  today: { completedSessions: number; revenueCents: number; newUsers: number };
+  today: { completedSessions: number; revenueCents: number; newUsers: number; topups: number; topupCents: number };
+  /** Summe aller Kundenguthaben – Geld, das den Nutzern "gehört" */
+  wallet: { totalBalanceCents: number };
 }
 
 export interface AdminDock {

@@ -51,6 +51,10 @@ const eventLabels: Record<string, string> = {
   'session.pickup_timeout': 'Abholung abgelaufen',
   'session.completed': 'Parken beendet',
   'session.cancelled': 'Reservierung abgebrochen',
+  'wallet.topup_started': 'Aufladung gestartet',
+  'wallet.topup_succeeded': 'Guthaben aufgeladen',
+  'wallet.topup_failed': 'Aufladung fehlgeschlagen',
+  'wallet.charged': 'Vom Guthaben abgebucht',
 };
 export const eventLabel = (type: string) => eventLabels[type] ?? type;
 
@@ -59,7 +63,8 @@ export function eventTone(type: string, payload: Record<string, unknown> | null)
   if (type === 'dock.fault' || type === 'station.offline' || type === 'command.failed') return 'danger';
   if (type === 'session.completed' && payload?.expected === false) return 'danger';
   if (type === 'dock.unbooked_bike' || type === 'session.pickup_timeout' || type === 'dock.disabled') return 'warning';
-  if (type === 'session.completed' || type === 'station.online' || type === 'dock.released') return 'ok';
+  if (type === 'wallet.topup_failed') return 'warning';
+  if (type === 'session.completed' || type === 'station.online' || type === 'dock.released' || type === 'wallet.topup_succeeded') return 'ok';
   return 'neutral';
 }
 
@@ -72,6 +77,9 @@ export function eventDetail(type: string, p: Record<string, unknown> | null): st
   if (type === 'command.failed') return String(p.error ?? '');
   if (type === 'dock.fault') return String(p.fault ?? p.lock ?? '');
   if (type === 'dock.disabled') return String(p.reason ?? '');
+  if (type === 'wallet.topup_started') return `${money(Number(p.amountCents ?? 0))} via ${p.provider}`;
+  if (type === 'wallet.topup_succeeded') return `+${money(Number(p.amountCents ?? 0))} → ${money(Number(p.balanceCents ?? 0))}`;
+  if (type === 'wallet.charged') return `−${money(Number(p.priceCents ?? 0))} → ${money(Number(p.balanceCents ?? 0))}`;
   return '';
 }
 
