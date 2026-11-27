@@ -1,6 +1,9 @@
 node_modules/
 dist/
 .env
+# auch Varianten wie .env.local, .env.backup … – aber die Vorlagen (.env.example) bleiben im Git
+.env.*
+!.env.example
 *.log
 .DS_Store
 .sim-state.json
