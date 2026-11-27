@@ -2,7 +2,7 @@
  * Login in zwei Schritten: 1. E-Mail eingeben → 2. Code aus der E-Mail eingeben.
  */
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { AppText, Banner } from '@/components/ui';
@@ -53,8 +53,17 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.container}>
+      {/*
+        Tastatur-Handling: Android-Apps laufen "edge-to-edge" – das Fenster wird beim Öffnen der
+        Tastatur NICHT mehr kleiner. Deshalb auf beiden Plattformen behavior="padding": der Inhalt
+        rutscht nach oben. Die ScrollView sorgt dafür, dass man auf kleinen Handys trotzdem alles
+        erreicht (und Tippen auf Knöpfe die Tastatur nicht erst schließen muss).
+      */}
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag">
           <View style={styles.header}>
             <AppText style={styles.logo}>🚲</AppText>
             <AppText variant="title">RadPark</AppText>
@@ -86,6 +95,11 @@ export default function LoginScreen() {
             <View style={styles.form}>
               <AppText variant="heading">Code eingeben</AppText>
               <AppText variant="secondary">Wir haben einen 6-stelligen Code an {email.trim()} geschickt.</AppText>
+              {devCode && (
+                <Pressable onPress={() => verify(devCode)} accessibilityRole="button">
+                  <Banner tone="warning">{`Entwicklungsmodus: Dein Code ist ${devCode} – tippen zum Einsetzen`}</Banner>
+                </Pressable>
+              )}
               <TextInput
                 style={[inputStyle, styles.codeInput]}
                 placeholder="000000"
@@ -103,11 +117,6 @@ export default function LoginScreen() {
                 maxLength={6}
                 accessibilityLabel="Login-Code"
               />
-              {devCode && (
-                <Pressable onPress={() => verify(devCode)} accessibilityRole="button">
-                  <Banner tone="warning">{`Entwicklungsmodus: Dein Code ist ${devCode} – tippen zum Einsetzen`}</Banner>
-                </Pressable>
-              )}
               {error && <Banner>{error}</Banner>}
               <Button title="Anmelden" onPress={() => verify()} loading={busy} disabled={code.length !== 6} />
               <Button
@@ -120,7 +129,7 @@ export default function LoginScreen() {
               />
             </View>
           )}
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -128,7 +137,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, padding: Spacing.lg, justifyContent: 'center', gap: Spacing.xl, maxWidth: 480, width: '100%', alignSelf: 'center' },
+  container: { flexGrow: 1, padding: Spacing.lg, justifyContent: 'center', gap: Spacing.xl, maxWidth: 480, width: '100%', alignSelf: 'center' },
   header: { alignItems: 'center', gap: Spacing.xs },
   logo: { fontSize: 56, lineHeight: 68 },
   form: { gap: Spacing.md },
