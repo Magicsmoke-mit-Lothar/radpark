@@ -9,6 +9,12 @@ try {
 
 // Wir prüfen die Konfiguration beim Start. Fehlt etwas, bricht das Programm
 // sofort mit einer verständlichen Meldung ab – statt später irgendwo mysteriös.
+/** "true"/"false" aus der .env → boolean; fehlt der Wert → undefined (dann gilt ein Standard) */
+const optionalBool = z
+  .enum(["true", "false"])
+  .optional()
+  .transform((v) => (v === undefined ? undefined : v === "true"));
+
 const ConfigSchema = z.object({
   DATABASE_URL: z.string().url(),
   MQTT_URL: z.string().url().default("mqtt://localhost:1883"),
@@ -18,11 +24,33 @@ const ConfigSchema = z.object({
   BUSINESS_TIMEZONE: z.string().default("Europe/Berlin"),
   /** Nach so vielen Sekunden ohne eingestelltes Rad wird eine Reservierung automatisch abgebrochen */
   RESERVATION_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(120),
-  /** Entwickler-Endpunkte (/dev/*) einschalten – NIEMALS in Produktion */
+  /** Entwickler-Endpunkte (/dev/*: Befehle ohne Login, Zeitreise …) – NIEMALS auf einem Server */
   DEV_ROUTES: z
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  /**
+   * Login-Code direkt in der Antwort mitschicken (statt nur per E-Mail).
+   * GEFÄHRLICH: Dann kann sich jeder als jeder anmelden. Standard: wie DEV_ROUTES.
+   */
+  DEV_LOGIN_CODES: optionalBool,
+  /**
+   * Simulator-Knöpfe ("Rad einstellen/entnehmen") für eingeloggte Nutzer erlauben.
+   * Sinnvoll auf einem Testserver mit Simulator, harmlos für echte Ständer. Standard: wie DEV_ROUTES.
+   */
+  SIMULATOR_CONTROL: optionalBool,
+
+  // --- Server-Betrieb ---
+  /** Läuft das Backend hinter einem Reverse-Proxy (Caddy)? Dann dessen X-Forwarded-*-Angaben glauben */
+  TRUST_PROXY: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+
+  // --- E-Mail (Login-Codes) ---
+  /** z. B. smtp://benutzer:passwort@smtp.anbieter.de:587 – leer = kein E-Mail-Versand */
+  SMTP_URL: z.string().trim().optional().or(z.literal("").transform(() => undefined)),
+  MAIL_FROM: z.string().default("RadPark <noreply@radpark.local>"),
 
   // --- Bezahlung / Guthaben ---
   /**
@@ -42,6 +70,8 @@ const ConfigSchema = z.object({
    * Leer lassen = automatisch: stripe, wenn ein Schlüssel da ist, sonst fake.
    */
   PAYMENT_PROVIDER: z.enum(["stripe", "fake"]).optional(),
+  /** Geheimnis zum Prüfen von Stripe-Webhooks (whsec_…) – leer = Webhook-Endpunkt aus */
+  STRIPE_WEBHOOK_SECRET: z.string().trim().optional().or(z.literal("").transform(() => undefined)),
   /** So viel Guthaben braucht man mindestens, um einen Parkvorgang zu starten (Cent) */
   MIN_START_BALANCE_CENTS: z.coerce.number().int().min(0).default(100),
 });
@@ -62,4 +92,14 @@ if (paymentProvider === "fake" && !parsed.data.DEV_ROUTES) {
   process.exit(1);
 }
 
-export const config = { ...parsed.data, PAYMENT_PROVIDER: paymentProvider };
+const devLoginCodes = parsed.data.DEV_LOGIN_CODES ?? parsed.data.DEV_ROUTES;
+if (!devLoginCodes && !parsed.data.SMTP_URL) {
+  console.warn("⚠️  Weder SMTP_URL noch DEV_LOGIN_CODES gesetzt – Login-Codes können NICHT zugestellt werden!");
+}
+
+export const config = {
+  ...parsed.data,
+  PAYMENT_PROVIDER: paymentProvider,
+  DEV_LOGIN_CODES: devLoginCodes,
+  SIMULATOR_CONTROL: parsed.data.SIMULATOR_CONTROL ?? parsed.data.DEV_ROUTES,
+};

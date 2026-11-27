@@ -12,6 +12,7 @@
  *   API_URL          Backend, um die Stationsliste zu holen (Standard: http://localhost:3000)
  *   SIM_STATIONS     Stationen ohne Backend vorgeben, z. B. "BER-001:8,BER-002:6"
  *   SIM_RELOCK_SECONDS  offener Bügel schließt automatisch nach … Sekunden (Standard: 60)
+ *   SIM_STATION_PASSWORD Passwort am gesicherten Broker (Benutzername = Stationscode)
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
@@ -21,7 +22,7 @@ const MQTT_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
 const API_URL = process.env.API_URL ?? "http://localhost:3000";
 const RELOCK_SECONDS = Number(process.env.SIM_RELOCK_SECONDS ?? 60);
 // Der "physische" Zustand (welches Rad steht wo) überlebt einen Neustart – wie bei echter Hardware
-const STATE_FILE = new URL("../.sim-state.json", import.meta.url);
+const STATE_FILE = process.env.SIM_STATE_FILE ? new URL(`file://${process.env.SIM_STATE_FILE}`) : new URL("../.sim-state.json", import.meta.url);
 
 const log = (msg: string) => console.log(`  ${msg}`);
 
@@ -70,7 +71,13 @@ for (const { code, dockCount } of await loadStationList()) {
     // Ein offener Bügel bleibt nach einem Neustart nicht offen
     docks.set(n, prev ? { ...prev, lock: prev.lock === "unlocked" ? "locked" : prev.lock } : { lock: "locked", bikePresent: false });
   }
-  const station = new SimStation(code, docks, { mqttUrl: MQTT_URL, relockSeconds: RELOCK_SECONDS, onChange: saveState, log });
+  const station = new SimStation(code, docks, {
+    mqttUrl: MQTT_URL,
+    password: process.env.SIM_STATION_PASSWORD || undefined,
+    relockSeconds: RELOCK_SECONDS,
+    onChange: saveState,
+    log,
+  });
   stations.set(code, station);
   station.start();
 }

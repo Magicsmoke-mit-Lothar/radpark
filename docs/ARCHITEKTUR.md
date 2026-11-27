@@ -130,7 +130,16 @@ Das MVP läuft auf einem Server. Die Architektur ist so gewählt, dass man spät
 3. **Redis** für Live-Updates an Apps (WebSockets über mehrere Instanzen) und für Caching – erst wenn nötig.
 4. **Event-Log auslagern** in ein Data Warehouse, wenn es sehr groß wird (Statistiken für Städte).
 
-## Sicherheit (vor dem ersten echten Ständer!)
+## Sicherheit
+
+Umgesetzt im Server-Betrieb (`deploy/`, Schritt 6a):
+- Login-Codes nur per E-Mail (`DEV_LOGIN_CODES=false`), `/dev/*` aus (`DEV_ROUTES=false`)
+- MQTT: kein anonymer Zugriff, Benutzername = Stationscode, ACL erlaubt nur eigene Topics
+- Datenbank und Backend nicht von außen erreichbar – nur über Caddy (später mit HTTPS)
+- Stripe-Webhooks nur mit gültiger Signatur; Gutschrift trotzdem erst nach Rückfrage bei Stripe
+- Container laufen nicht als root
+
+Noch offen vor dem ersten echten Ständer:
 
 - MQTT-Broker: kein anonymer Zugriff mehr; **jeder Ständer bekommt eigene Zugangsdaten oder ein
   Zertifikat** und darf nur seine eigenen Topics lesen/schreiben (ACL).

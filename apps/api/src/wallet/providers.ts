@@ -82,6 +82,21 @@ export class StripeProvider implements PaymentProvider {
     return { checkoutUrl: session.url, providerRef: session.id, paidImmediately: false };
   }
 
+  /**
+   * Webhook von Stripe prüfen: Die Signatur beweist, dass die Nachricht wirklich von Stripe
+   * kommt (und nicht von jemandem, der sich Guthaben erschleichen will). Liefert die Topup-ID.
+   */
+  parseWebhook(rawBody: Buffer, signature: string, secret: string): { topupId: string | null; type: string } {
+    // Wirft NUR bei ungültiger Signatur – alles danach ist geprüft und kommt von Stripe
+    const event = this.stripe.webhooks.constructEvent(rawBody, signature, secret);
+    const type = String(event.type ?? "");
+    if (type.startsWith("checkout.session.") && event.data?.object) {
+      const session = event.data.object as Stripe.Checkout.Session;
+      return { topupId: session.metadata?.topupId ?? session.client_reference_id ?? null, type };
+    }
+    return { topupId: null, type };
+  }
+
   async checkTopup(providerRef: string): Promise<ProviderStatus> {
     const session = await this.stripe.checkout.sessions.retrieve(providerRef);
     if (session.payment_status === "paid") return "succeeded";

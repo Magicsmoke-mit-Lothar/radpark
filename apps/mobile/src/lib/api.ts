@@ -140,9 +140,11 @@ export const api = {
   pickup: (id: string) => request<Parking>('POST', `/parkings/${id}/pickup`),
   cancel: (id: string) => request<Parking>('POST', `/parkings/${id}/cancel`),
 
-  /** NUR Entwicklung: dem Simulator sagen "Rad einstellen" / "Rad entnehmen" */
-  devSimulate: (stationCode: string, dock: number, action: 'park' | 'take') =>
-    request<{ ok: boolean }>('POST', `/dev/stations/${stationCode}/docks/${dock}/simulate`, { action }),
+  /** Was kann der Server? (z. B. ob es Simulator-Knöpfe gibt) */
+  meta: () => request<{ simulatorControl: boolean; paymentProvider: 'stripe' | 'fake'; testMode: boolean }>('GET', '/meta'),
+  /** Nur mit Simulator: "Rad einstellen" / "Rad entnehmen" auslösen */
+  simulate: (stationCode: string, dock: number, action: 'park' | 'take') =>
+    request<{ ok: boolean }>('POST', `/sim/stations/${stationCode}/docks/${dock}/action`, { action }),
 
   wallet: () => request<Wallet>('GET', '/wallet'),
   startTopup: (amountCents: number, returnUrl: string) =>

@@ -6,7 +6,7 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { CommandType, SimAction } from "@radpark/protocol";
+import { CommandType } from "@radpark/protocol";
 import { db } from "../db/client";
 import { docks, events, parkingSessions, stations } from "../db/schema";
 import { recordEvent } from "../events";
@@ -49,19 +49,6 @@ export async function devRoutes(app: FastifyInstance, opts: { mqtt: MqttGateway 
       }
       throw err;
     }
-  });
-
-  /**
-   * POST /dev/stations/BER-001/docks/3/simulate {"action": "park" | "take"}
-   * Sagt dem SIMULATOR: "Rad einstellen" bzw. "Rad entnehmen" – als stünde jemand am Ständer.
-   * (Wird von den 🛠-Knöpfen in der App benutzt. Mit echter Hardware wirkungslos.)
-   */
-  app.post("/dev/stations/:code/docks/:number/simulate", async (req, reply) => {
-    const params = CommandParams.safeParse(req.params);
-    const body = z.object({ action: SimAction }).safeParse(req.body);
-    if (!params.success || !body.success) return reply.code(400).send({ error: 'Erwartet {"action":"park"} oder {"action":"take"}' });
-    await opts.mqtt.simulate(params.data.code, params.data.number, body.data.action);
-    return { ok: true };
   });
 
   /**

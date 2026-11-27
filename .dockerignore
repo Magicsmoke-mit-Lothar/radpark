@@ -1,0 +1,9 @@
+# Was beim Docker-Build NICHT in den Container kopiert wird
+**/node_modules
+**/dist
+**/.expo
+**/.env
+**/.sim-state.json
+.git
+apps/mobile
+deploy/.env

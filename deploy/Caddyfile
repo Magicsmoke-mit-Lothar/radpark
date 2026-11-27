@@ -1,0 +1,30 @@
+# Caddy: die "Eingangstür" des Servers.
+#  - /api/*  → Backend (das /api wird vorher abgeschnitten)
+#  - alles andere → Admin-Dashboard
+#
+# SITE_ADDRESS bestimmt, wie Caddy erreichbar ist:
+#  - ":80"                  → einfaches HTTP (lokaler Test)
+#  - "radpark.example.com"  → Caddy holt AUTOMATISCH ein HTTPS-Zertifikat (Let's Encrypt)
+{$SITE_ADDRESS::80} {
+	encode gzip
+
+	handle_path /api/* {
+		reverse_proxy api:3000 {
+			# Dem Backend sagen, dass es von außen unter /api erreichbar ist
+			header_up X-Forwarded-Prefix /api
+		}
+	}
+
+	handle {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Ein paar Sicherheits-Header für Browser
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

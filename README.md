@@ -13,7 +13,8 @@ apps/
   admin/          Web-Dashboard für Betreiber (Vite + React)
 packages/
   protocol/       Der "Vertrag" zwischen Backend und Ständer (MQTT-Topics + Nachrichtenformate)
-infra/            Konfiguration für Datenbank und MQTT-Broker
+infra/            Konfiguration für Datenbank und MQTT-Broker (Entwicklung)
+deploy/           Alles für den Server-Betrieb in Docker (siehe deploy/README.md)
 docs/             Architektur und Protokoll – zum Nachlesen
 ```
 
@@ -203,6 +204,11 @@ Im Simulator `abholen BER-001 1` → Vorgang beendet, Preis berechnet: `curl loc
 Fehler kommen immer als `{ "error": "CODE", "message": "…" }`, z. B. `NO_FREE_DOCK`, `ALREADY_PARKING`,
 `STATION_OFFLINE`. Die App übersetzt den Code in eine verständliche Meldung.
 
+## Server-Betrieb / Docker
+
+Siehe **[deploy/README.md](deploy/README.md)** – kurz: `pnpm stage:up`, `pnpm stage:seed`,
+dann http://localhost:8088 (Admin) und http://localhost:8025 (Test-Postfach für Login-Codes).
+
 ## Nützliche Befehle
 
 ```bash
@@ -223,7 +229,9 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 - [x] **Schritt 5a – Admin-Dashboard:** Kennzahlen, Stationen live, Störungen beheben, Event-Log, Admin-Rolle
 - [x] **Schritt 5b – Guthaben:** aufladen (Testgutschrift / Stripe-Testmodus), Abbuchung nach dem Parken, Kontoauszug
   - [ ] Stripe-Testmodus mit echten Testschlüsseln durchspielen · Stripe-Webhooks (brauchen öffentliche Adresse → Schritt 6)
-- [ ] **Schritt 6 – Betrieb:** Tests, CI, Deployment, Sicherheit (TLS + Zugangsdaten pro Ständer)
+- [x] **Schritt 6a – Docker/Staging:** komplettes System in Docker, Caddy (HTTPS-fähig), Login-Codes per E-Mail,
+  MQTT mit Passwort + Rechten pro Ständer, Stripe-Webhook, abgeschaltete Dev-Funktionen → [deploy/README.md](deploy/README.md)
+- [ ] **Schritt 6b – Server & Test-APK:** echter Server mit Domain + HTTPS, Test-APK für Android
 - [ ] **Schritt 7 – Hardware-Prototyp:** ESP32-Firmware mit demselben Protokoll wie der Simulator
 - [ ] **Schritt 8 – Gamification:** Punkte, Streaks, Abzeichen, CO₂-Bilanz – berechnet aus dem Event-Log
 

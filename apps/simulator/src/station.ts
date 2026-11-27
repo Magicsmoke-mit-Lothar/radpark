@@ -26,6 +26,8 @@ export interface DockSim {
 
 export interface SimOptions {
   mqttUrl: string;
+  /** Passwort am gesicherten Broker (Benutzername = Stationscode). Leer = ohne Anmeldung (Entwicklung) */
+  password?: string;
   /** Nach wie vielen Sekunden ein offener Bügel ohne Aktion automatisch wieder schließt */
   relockSeconds: number;
   /** Wird nach jeder Zustandsänderung aufgerufen (zum Speichern) */
@@ -60,6 +62,9 @@ export class SimStation {
 
     this.client = mqtt.connect(this.opts.mqttUrl, {
       clientId: `station-${this.code}`,
+      // Wie ein echter Ständer: Anmeldung mit dem eigenen Stationscode – der Broker erlaubt ihm
+      // dann NUR die eigenen Topics (siehe infra/mosquitto/acl)
+      ...(this.opts.password ? { username: this.code, password: this.opts.password } : {}),
       keepalive: 10, // Broker merkt nach ~15 s ohne Lebenszeichen, dass wir weg sind
       reconnectPeriod: 3_000,
       // "Letzter Wille": Diese Nachricht veröffentlicht der BROKER, wenn wir unerwartet verschwinden

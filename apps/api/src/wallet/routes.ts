@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { currentUserId, requireAuth } from "../auth/guard";
 import { config } from "../config";
-import { parseInput } from "../errors";
+import { AppError, parseInput } from "../errors";
 import { TOPUP_OPTIONS, type WalletService } from "./service";
 
 const TopupBody = z.object({
@@ -51,6 +51,24 @@ export async function walletRoutes(app: FastifyInstance, opts: { wallet: WalletS
         <p>Du kannst jetzt zur RadPark-App zurückkehren.</p></body>`);
   });
 
+  /**
+   * POST /webhooks/stripe – Stripe meldet sich, sobald eine Zahlung eingegangen ist
+   * (auch wenn die App nie zurückkommt). Braucht den UNVERÄNDERTEN Rohtext für die Signaturprüfung.
+   */
+  if (config.STRIPE_WEBHOOK_SECRET) {
+    const secret = config.STRIPE_WEBHOOK_SECRET;
+    app.register(async (hook) => {
+      hook.removeContentTypeParser("application/json");
+      hook.addContentTypeParser("application/json", { parseAs: "buffer" }, (_req, body, done) => done(null, body));
+      hook.post("/webhooks/stripe", async (req) => {
+        const signature = req.headers["stripe-signature"];
+        if (typeof signature !== "string") throw new AppError(400, "MISSING_SIGNATURE", "Stripe-Signatur fehlt");
+        await wallet.handleStripeWebhook(req.body as Buffer, signature, secret);
+        return { received: true };
+      });
+    });
+  }
+
   app.register(async (authed) => {
     authed.addHook("preHandler", requireAuth);
 
@@ -67,7 +85,9 @@ export async function walletRoutes(app: FastifyInstance, opts: { wallet: WalletS
     authed.post("/wallet/topups", async (req, reply) => {
       const { amountCents, returnUrl } = parseInput(TopupBody, req.body);
       // Adresse dieses Backends so, wie der Client sie sieht (z. B. http://192.168.1.20:3000)
-      const returnBase = `${req.protocol}://${req.host}`;
+      // Hinter Caddy ist das Backend unter /api erreichbar – Caddy sagt uns das per X-Forwarded-Prefix
+      const prefix = config.TRUST_PROXY ? String(req.headers["x-forwarded-prefix"] ?? "") : "";
+      const returnBase = `${req.protocol}://${req.host}${prefix}`;
       const result = await wallet.startTopup(currentUserId(req), amountCents, returnBase, isAllowedAppUrl(returnUrl) ? returnUrl : "radpark://wallet");
       return reply.code(201).send(result);
     });

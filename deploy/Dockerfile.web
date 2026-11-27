@@ -1,0 +1,15 @@
+# Stufe 1: Admin-Dashboard bauen (fertige HTML/JS/CSS-Dateien)
+FROM node:24-bookworm-slim AS build
+RUN npm install -g pnpm@12.16.1
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/admin/package.json apps/admin/
+RUN pnpm install --frozen-lockfile --filter "@radpark/admin..."
+COPY apps/admin apps/admin
+# Das Dashboard spricht das Backend unter derselben Adresse an: /api (kein CORS nötig)
+RUN cd apps/admin && VITE_API_URL=/api pnpm build
+
+# Stufe 2: Nur die fertigen Dateien + Caddy (Webserver & Reverse-Proxy mit automatischem HTTPS)
+FROM caddy:2
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/admin/dist /srv/admin

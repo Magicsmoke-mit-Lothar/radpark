@@ -6,6 +6,8 @@ import { db } from "../db/client";
 import { users } from "../db/schema";
 import { parseInput } from "../errors";
 import { bearerToken, currentUserId, requireAuth } from "./guard";
+import { AppError } from "../errors";
+import { mailEnabled, sendLoginCode } from "../mailer";
 import { createLoginCode, revokeToken, verifyLoginCode } from "./service";
 
 // Leerzeichen & Großbuchstaben entfernen, BEVOR geprüft wird ("Anna@Test.de " → "anna@test.de")
@@ -19,12 +21,19 @@ export async function authRoutes(app: FastifyInstance) {
     const { email } = parseInput(RequestCodeBody, req.body);
     const code = await createLoginCode(email);
 
-    // TODO (Schritt 6): echten E-Mail-Versand anbinden (z. B. Postmark, Brevo, Amazon SES)
-    if (config.DEV_ROUTES) {
+    if (mailEnabled) {
+      try {
+        await sendLoginCode(email, code);
+      } catch (err) {
+        req.log.error({ err }, "Login-Code konnte nicht per E-Mail verschickt werden");
+        throw new AppError(502, "MAIL_FAILED", "E-Mail konnte nicht verschickt werden");
+      }
+    }
+    if (config.DEV_LOGIN_CODES) {
       req.log.info(`📧 Login-Code für ${email}: ${code}`);
       return { sent: true, devCode: code }; // nur in der Entwicklung mitschicken!
     }
-    req.log.warn("Kein E-Mail-Versand konfiguriert – Login-Code kann nicht zugestellt werden");
+    if (!mailEnabled) req.log.warn("Kein E-Mail-Versand konfiguriert – Login-Code kann nicht zugestellt werden");
     return { sent: true };
   });
 

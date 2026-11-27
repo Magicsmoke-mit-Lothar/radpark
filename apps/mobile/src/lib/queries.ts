@@ -94,3 +94,8 @@ export function useTopup() {
     onSettled: () => qc.invalidateQueries({ queryKey: keys.wallet }),
   });
 }
+
+/** Fähigkeiten des Servers – ändern sich praktisch nie, daher lange zwischenspeichern */
+export function useServerMeta() {
+  return useQuery({ queryKey: ['meta'], queryFn: api.meta, staleTime: 5 * 60_000 });
+}

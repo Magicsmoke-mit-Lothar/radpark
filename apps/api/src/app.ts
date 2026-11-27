@@ -10,6 +10,7 @@ import { MqttGateway } from "./mqtt/connection";
 import { parkingRoutes } from "./parking/routes";
 import { ParkingService } from "./parking/service";
 import { devRoutes } from "./routes/dev";
+import { simRoutes } from "./routes/sim";
 import { stationRoutes } from "./routes/stations";
 import { FakeProvider, StripeProvider } from "./wallet/providers";
 import { walletRoutes } from "./wallet/routes";
@@ -17,7 +18,7 @@ import { WalletService } from "./wallet/service";
 
 /** Baut die Web-App zusammen (getrennt von server.ts, damit wir sie später in Tests starten können) */
 export async function buildApp() {
-  const app = Fastify({ logger: { level: config.LOG_LEVEL } });
+  const app = Fastify({ logger: { level: config.LOG_LEVEL }, trustProxy: config.TRUST_PROXY });
   app.decorateRequest("userId", null);
   app.decorateRequest("userRole", null);
 
@@ -78,11 +79,20 @@ export async function buildApp() {
     return reply.code(body.ok ? 200 : 503).send(body);
   });
 
+  /** GET /meta → was kann dieser Server? (Die App blendet z. B. die 🛠-Simulator-Knöpfe danach ein) */
+  app.get("/meta", async () => ({
+    simulatorControl: config.SIMULATOR_CONTROL,
+    paymentProvider: config.PAYMENT_PROVIDER,
+    testMode: true,
+  }));
+
   await app.register(stationRoutes);
   await app.register(authRoutes);
   await app.register(parkingRoutes, { parking });
   await app.register(walletRoutes, { wallet });
   await app.register(adminRoutes, { mqtt });
+
+  if (config.SIMULATOR_CONTROL) await app.register(simRoutes, { mqtt });
 
   if (config.DEV_ROUTES) {
     app.log.warn("⚠️  DEV_ROUTES aktiv – Entwickler-Endpunkte unter /dev/* sind ohne Login erreichbar!");

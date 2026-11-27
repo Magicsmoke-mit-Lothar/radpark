@@ -12,7 +12,7 @@ import { db, type Executor } from "../db/client";
 import { topups, users, walletTransactions } from "../db/schema";
 import { AppError } from "../errors";
 import { recordEvent } from "../events";
-import type { PaymentProvider } from "./providers";
+import { StripeProvider, type PaymentProvider } from "./providers";
 
 /** Erlaubte Aufladebeträge (Cent) – feste Stufen statt freier Eingabe */
 export const TOPUP_OPTIONS = [500, 1000, 2000] as const;
@@ -142,6 +142,25 @@ export class WalletService {
     for (const t of open) {
       if (t.providerRef) await this.syncTopup(t.id, t.providerRef).catch((err) => this.log.warn({ err, topupId: t.id }, "Abgleich fehlgeschlagen"));
     }
+  }
+
+  /**
+   * Stripe-Webhook: "Zahlung zu Aufladung X ist eingegangen". Wir schreiben NICHT blind gut,
+   * sondern gleichen wie sonst auch über die Stripe-API ab (doppelt hält besser, und die
+   * Gutschrift ist ohnehin nur einmal möglich).
+   */
+  async handleStripeWebhook(rawBody: Buffer, signature: string, secret: string) {
+    if (!(this.provider instanceof StripeProvider)) throw new AppError(404, "NOT_FOUND", "Stripe nicht aktiv");
+    let parsed;
+    try {
+      parsed = this.provider.parseWebhook(rawBody, signature, secret);
+    } catch {
+      throw new AppError(400, "INVALID_SIGNATURE", "Webhook-Signatur ungültig");
+    }
+    this.log.info({ type: parsed.type, topupId: parsed.topupId }, "Stripe-Webhook empfangen");
+    if (!parsed.topupId || !/^[0-9a-f-]{36}$/i.test(parsed.topupId)) return;
+    const [t] = await db.select().from(topups).where(eq(topups.id, parsed.topupId));
+    if (t?.status === "pending" && t.providerRef) await this.syncTopup(t.id, t.providerRef);
   }
 
   private async syncTopup(topupId: string, providerRef: string) {

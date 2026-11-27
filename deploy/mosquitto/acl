@@ -1,0 +1,17 @@
+# Wer darf was? (ACL = Access Control List)
+#
+# Backend: darf alles unter stations/ lesen und Befehle schicken; darf den Simulator steuern
+user api
+topic read stations/#
+topic write stations/+/cmd
+topic write sim/#
+
+# Ständer: Benutzername = Stationscode (z. B. "BER-001"). %u wird durch den Benutzernamen ersetzt.
+# Jeder Ständer darf NUR seine eigenen Topics benutzen – BER-001 kann also nicht so tun,
+# als wäre er BER-002, und keine Befehle an andere Ständer schicken.
+pattern write stations/%u/status
+pattern write stations/%u/docks/+/state
+pattern read stations/%u/cmd
+pattern write stations/%u/cmd/ack
+# Nur relevant, wenn statt echter Hardware der Simulator läuft:
+pattern read sim/stations/%u/#

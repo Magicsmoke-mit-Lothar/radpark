@@ -1,0 +1,30 @@
+# Ein Image für Backend UND Simulator (beide TypeScript, gleiche Abhängigkeiten).
+# Welches Programm startet, legt docker-compose.yml fest.
+FROM node:24-bookworm-slim
+
+RUN npm install -g pnpm@12.16.1
+WORKDIR /app
+
+# 1) Erst nur die package.json-Dateien kopieren und installieren.
+#    Vorteil: Docker merkt sich diesen Schritt ("Cache") – solange sich die Abhängigkeiten nicht
+#    ändern, muss beim nächsten Build nicht neu installiert werden.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/protocol/package.json packages/protocol/
+COPY apps/api/package.json apps/api/
+COPY apps/simulator/package.json apps/simulator/
+RUN pnpm install --frozen-lockfile --filter "@radpark/api..." --filter "@radpark/simulator..."
+
+# 2) Dann der eigentliche Code
+COPY tsconfig.base.json ./
+COPY packages/protocol packages/protocol
+COPY apps/api apps/api
+COPY apps/simulator apps/simulator
+
+# Nicht als Administrator (root) laufen – falls jemand eine Lücke findet, kann er weniger anrichten
+RUN mkdir -p /data && chown node:node /data
+USER node
+
+ENV NODE_ENV=production
+EXPOSE 3000
+# Standard: Datenbank-Migrationen einspielen, dann Backend starten
+CMD ["sh", "-c", "cd apps/api && node_modules/.bin/tsx src/db/migrate.ts && exec node_modules/.bin/tsx src/server.ts"]
