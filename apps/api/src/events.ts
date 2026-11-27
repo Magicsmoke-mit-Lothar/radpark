@@ -13,6 +13,8 @@ export type EventType =
   | "dock.bike_removed"
   | "dock.unbooked_bike" // Rad steht im Dock, ohne dass es eine Buchung gibt
   | "dock.fault"
+  | "dock.released" // Admin hat ein gesperrtes Dock wieder freigegeben
+  | "dock.disabled" // Admin hat ein Dock gesperrt (z. B. Wartung)
   | "command.sent"
   | "command.acked"
   | "command.failed"

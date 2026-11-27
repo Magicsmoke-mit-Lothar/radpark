@@ -91,6 +91,13 @@ Gespeichert werden nur Hashes von Codes und Tokens.
 
 Fehlercodes vom Backend (`NO_FREE_DOCK` …) übersetzt `src/lib/format.ts` in deutsche Meldungen.
 
+## Admin-Dashboard (`apps/admin`)
+
+Vite + React + TanStack Query – eine reine Browser-App (kein eigener Server nötig), spricht mit
+denselben Backend-Endpunkten unter `/admin/*`. Zugriff nur mit Rolle `admin` (`users.role`).
+Rechteprüfung passiert **im Backend** (`requireAdmin`), nicht im Browser – das Dashboard selbst
+ist nur eine Oberfläche. Jede Admin-Aktion wird mit der Admin-ID im Event-Log gespeichert.
+
 ## Skalierung – wie das später wächst
 
 Das MVP läuft auf einem Server. Die Architektur ist so gewählt, dass man später ohne Umbau ausbauen kann:

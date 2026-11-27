@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { sql } from "drizzle-orm";
+import { adminRoutes } from "./admin/routes";
 import { authRoutes } from "./auth/routes";
 import { config } from "./config";
 import { db } from "./db/client";
@@ -15,6 +16,7 @@ import { stationRoutes } from "./routes/stations";
 export async function buildApp() {
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
   app.decorateRequest("userId", null);
+  app.decorateRequest("userRole", null);
 
   // Verbindung zu den Fahrradständern (über den MQTT-Broker)
   const mqtt = new MqttGateway(app.log);
@@ -60,6 +62,7 @@ export async function buildApp() {
   await app.register(stationRoutes);
   await app.register(authRoutes);
   await app.register(parkingRoutes, { parking });
+  await app.register(adminRoutes, { mqtt });
 
   if (config.DEV_ROUTES) {
     app.log.warn("⚠️  DEV_ROUTES aktiv – Entwickler-Endpunkte unter /dev/* sind ohne Login erreichbar!");

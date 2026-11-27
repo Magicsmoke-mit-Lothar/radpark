@@ -10,7 +10,7 @@ apps/
   api/            Backend (Fastify + Drizzle + PostgreSQL/PostGIS)
   simulator/      simulierte Fahrradständer – ersetzen die Hardware, bis es einen Prototyp gibt
   mobile/         App für Radfahrer (Expo / React Native) – Android zuerst
-  admin/          (Schritt 5) Web-Dashboard für Betreiber (Next.js)
+  admin/          Web-Dashboard für Betreiber (Vite + React)
 packages/
   protocol/       Der "Vertrag" zwischen Backend und Ständer (MQTT-Topics + Nachrichtenformate)
 infra/            Konfiguration für Datenbank und MQTT-Broker
@@ -106,6 +106,25 @@ Was im Backend passiert ist, zeigt das Event-Log: http://localhost:3000/dev/even
 
 Ohne Handy geht es auch im Browser: im App-Terminal `w` drücken (statt der Karte gibt es dort eine Liste).
 
+## Admin-Dashboard für Betreiber
+
+```bash
+pnpm dev:admin        # → http://localhost:5173 (Backend muss laufen)
+```
+
+Anmelden mit **admin@radpark.dev** (wird von `pnpm db:seed` angelegt), Code wie gewohnt.
+Weitere Admins freischalten: `pnpm admin:grant name@example.com`
+
+| Seite | Was man sieht / tun kann |
+|---|---|
+| **Übersicht** | Kennzahlen (online, frei, belegt, gesperrt, Umsatz heute …) und „Braucht Aufmerksamkeit“ |
+| **Stationen** | Jedes Dock live als farbige Kachel. Klick → Details + **Freigeben**, **Sperren**, **Entriegeln (Service)**, **LED blinken** |
+| **Parkvorgänge** | Wer parkt gerade wo, wie lange, bisherige Kosten |
+| **Ereignisse** | Das komplette Event-Log mit Filtern – auch jede Admin-Aktion mit Name |
+
+Regeln: Ein gestörtes Dock lässt sich erst freigeben, wenn die Hardware keine Störung mehr meldet.
+Ein gebuchtes Dock lässt sich nicht sperren. Entriegeln eines belegten Docks fragt vorher nach.
+
 ## Parken über die API (so macht es die App im Hintergrund)
 
 Backend und Simulator müssen laufen. Dann in einem dritten Terminal:
@@ -150,6 +169,8 @@ Im Simulator `abholen BER-001 1` → Vorgang beendet, Preis berechnet: `curl loc
 | `GET /parkings` | ✔ | Verlauf |
 | `POST /parkings/:id/pickup` | ✔ | Rad abholen (Bügel öffnet) |
 | `POST /parkings/:id/cancel` | ✔ | Reservierung abbrechen |
+| `GET /admin/overview`, `/admin/stations`, `/admin/sessions/open`, `/admin/events` | Admin | Dashboard-Daten |
+| `POST /admin/docks/:id/release` · `/disable` · `/command` | Admin | Dock freigeben · sperren · Service-Befehl |
 | `POST /dev/...`, `GET /dev/events` | – | Nur Entwicklung (`DEV_ROUTES=true`) |
 
 Fehler kommen immer als `{ "error": "CODE", "message": "…" }`, z. B. `NO_FREE_DOCK`, `ALREADY_PARKING`,
@@ -172,7 +193,8 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 - [x] **Schritt 3 – Parkvorgang:** Nutzer-Login, reservieren → entriegeln → einstellen → abholen, Preisberechnung, Event-Log
 - [x] **Schritt 4 – Mobile App (Android):** Login, Karte, parken, Live-Status, Abholen, Verlauf
   - [ ] später: iOS testen, Live-Updates per WebSocket statt Nachfragen, „Navigation zur Station“
-- [ ] **Schritt 5 – Bezahlung + Admin-Dashboard:** Stripe (Testmodus), Betreiber-Übersicht, Störungen
+- [x] **Schritt 5a – Admin-Dashboard:** Kennzahlen, Stationen live, Störungen beheben, Event-Log, Admin-Rolle
+- [ ] **Schritt 5b – Bezahlung:** Stripe (Testmodus), Karte hinterlegen, nach dem Abholen abbuchen
 - [ ] **Schritt 6 – Betrieb:** Tests, CI, Deployment, Sicherheit (TLS + Zugangsdaten pro Ständer)
 - [ ] **Schritt 7 – Hardware-Prototyp:** ESP32-Firmware mit demselben Protokoll wie der Simulator
 - [ ] **Schritt 8 – Gamification:** Punkte, Streaks, Abzeichen, CO₂-Bilanz – berechnet aus dem Event-Log

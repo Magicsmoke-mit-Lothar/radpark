@@ -10,9 +10,11 @@
     "db:generate": "pnpm --filter @radpark/api db:generate",
     "db:migrate": "pnpm --filter @radpark/api db:migrate",
     "db:seed": "pnpm --filter @radpark/api db:seed",
+    "admin:grant": "pnpm --filter @radpark/api admin:grant",
     "dev:api": "pnpm --filter @radpark/api dev",
     "sim": "pnpm --filter @radpark/simulator start",
     "dev:mobile": "pnpm --filter @radpark/mobile start",
+    "dev:admin": "pnpm --filter @radpark/admin dev",
     "dev:reset": "docker compose restart mosquitto && pnpm db:seed && rm -f apps/simulator/.sim-state.json",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r --if-present test"

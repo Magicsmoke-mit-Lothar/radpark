@@ -84,13 +84,14 @@ export async function verifyLoginCode(rawEmail: string, code: string) {
   });
 }
 
-/** Findet den Nutzer zu einem Token (oder null, wenn ungültig/abgelaufen) */
-export async function userIdForToken(token: string): Promise<string | null> {
+/** Findet den Nutzer (ID + Rolle) zu einem Token – oder null, wenn ungültig/abgelaufen */
+export async function userForToken(token: string): Promise<{ userId: string; role: "user" | "admin" } | null> {
   const [row] = await db
-    .select({ userId: authTokens.userId })
+    .select({ userId: authTokens.userId, role: users.role })
     .from(authTokens)
+    .innerJoin(users, eq(users.id, authTokens.userId))
     .where(and(eq(authTokens.tokenHash, sha256(token)), gt(authTokens.expiresAt, new Date())));
-  return row?.userId ?? null;
+  return row ?? null;
 }
 
 export async function revokeToken(token: string) {

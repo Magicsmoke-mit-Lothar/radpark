@@ -32,8 +32,12 @@ await db.transaction(async (tx) => {
     );
   }
 
-  await tx.insert(users).values({ email: "test@radpark.dev", displayName: "Testperson" });
+  await tx.insert(users).values([
+    { email: "test@radpark.dev", displayName: "Testperson" },
+    // Betreiber-Konto fürs Admin-Dashboard
+    { email: "admin@radpark.dev", displayName: "Betreiber", role: "admin" },
+  ]);
 });
 
-console.log(`✅ ${demoStations.length} Stationen + Testnutzer angelegt`);
+console.log(`✅ ${demoStations.length} Stationen, Testnutzer und Admin (admin@radpark.dev) angelegt`);
 await pool.end();

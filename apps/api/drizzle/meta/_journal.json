@@ -15,6 +15,13 @@
       "when": 1795810303288,
       "tag": "0001_tidy_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795812318572,
+      "tag": "0002_bumpy_anita_blake",
+      "breakpoints": true
     }
   ]
 }

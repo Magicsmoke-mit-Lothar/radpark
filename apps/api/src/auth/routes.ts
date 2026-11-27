@@ -32,7 +32,7 @@ export async function authRoutes(app: FastifyInstance) {
   app.post("/auth/verify", async (req) => {
     const { email, code } = parseInput(VerifyBody, req.body);
     const { token, user } = await verifyLoginCode(email, code);
-    return { token, user: { id: user.id, email: user.email, displayName: user.displayName } };
+    return { token, user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role } };
   });
 
   // Ab hier: nur mit gültigem Token
@@ -42,7 +42,7 @@ export async function authRoutes(app: FastifyInstance) {
     /** GET /me → wer bin ich? */
     authed.get("/me", async (req) => {
       const [user] = await db
-        .select({ id: users.id, email: users.email, displayName: users.displayName, createdAt: users.createdAt })
+        .select({ id: users.id, email: users.email, displayName: users.displayName, role: users.role, createdAt: users.createdAt })
         .from(users)
         .where(eq(users.id, currentUserId(req)));
       return user;

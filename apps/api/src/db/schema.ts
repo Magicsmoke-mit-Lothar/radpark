@@ -113,10 +113,14 @@ export const docks = pgTable(
   (t) => [uniqueIndex("docks_station_number_idx").on(t.stationId, t.number)],
 );
 
+/** Rollen: "user" = Radfahrer, "admin" = Betreiber (darf das Admin-Dashboard benutzen) */
+export const userRole = pgEnum("user_role", ["user", "admin"]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   displayName: text("display_name"),
+  role: userRole("role").notNull().default("user"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
