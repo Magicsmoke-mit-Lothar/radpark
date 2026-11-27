@@ -7,3 +7,5 @@ dist/
 *.log
 .DS_Store
 .sim-state.json
+# Datenbank-Sicherungen (enthalten persönliche Daten!)
+deploy/backups/

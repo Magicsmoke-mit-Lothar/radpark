@@ -84,10 +84,15 @@ Was im Backend passiert ist, zeigt das Event-Log: http://localhost:3000/dev/even
 3. Starte in drei Terminals:
 
    ```bash
-   pnpm dev:api        # Terminal 1: Backend
+   pnpm dev:api:lan    # Terminal 1: Backend – für Geräte im WLAN erreichbar (fürs Handy nötig)
    pnpm sim            # Terminal 2: Simulator
    pnpm dev:mobile     # Terminal 3: App-Server → zeigt einen QR-Code
    ```
+
+   > ⚠️ `dev:api:lan` macht den **Entwicklungsmodus** (Login-Code steht in der Antwort!) für ALLE
+   > Geräte im WLAN erreichbar – nur im eigenen Heimnetz benutzen. In Uni-/Firmen-/Café-WLANs
+   > stattdessen über den Tunnel testen: `EXPO_PUBLIC_API_URL=https://api.botrics.de pnpm dev:mobile`.
+   > `pnpm dev:api` (ohne `:lan`) ist nur von diesem Rechner aus erreichbar.
 
 4. Öffne Expo Go und scanne den QR-Code. Die App lädt (beim ersten Mal ca. 30 Sekunden).
 5. Melde dich mit einer beliebigen E-Mail an – der Code erscheint in der App

@@ -46,6 +46,7 @@ const MESSAGES: Record<string, string> = {
   NETWORK: 'Keine Verbindung zum Server. Bist du im selben WLAN wie dein Rechner und läuft das Backend?',
   INVALID_INPUT: 'Bitte überprüfe deine Eingabe.',
   INVALID_CODE: 'Der Code ist falsch oder abgelaufen.',
+  ACCOUNT_LOCKED: 'Zu viele falsche Codes. Aus Sicherheitsgründen ist die Anmeldung mit dieser Adresse vorübergehend gesperrt.',
   MAIL_FAILED: 'Die E-Mail konnte gerade nicht verschickt werden. Bitte versuche es gleich noch einmal.',
   UNAUTHORIZED: 'Bitte melde dich erneut an.',
   STATION_OFFLINE: 'Diese Station ist gerade nicht erreichbar. Bitte versuche es gleich noch einmal.',

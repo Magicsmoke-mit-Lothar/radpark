@@ -9,7 +9,9 @@ services:
       POSTGRES_PASSWORD: radpark
       POSTGRES_DB: radpark
     ports:
-      - "5432:5432"
+      # Nur dieser Rechner (127.0.0.1) – sonst wäre die Datenbank für alle im WLAN erreichbar.
+      # Achtung: Docker-Ports umgehen die Firewall (ufw)! Darum die Einschränkung hier.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -23,8 +25,9 @@ services:
   mosquitto:
     image: eclipse-mosquitto:2
     ports:
-      - "1883:1883" # MQTT (Ständer, Backend)
-      - "9001:9001" # MQTT über WebSocket (z. B. für Debug-Tools im Browser)
+      # Nur dieser Rechner – der Entwicklungs-Broker hat KEIN Passwort
+      - "127.0.0.1:1883:1883" # MQTT (Ständer, Backend)
+      - "127.0.0.1:9001:9001" # MQTT über WebSocket (z. B. für Debug-Tools im Browser)
     volumes:
       - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 

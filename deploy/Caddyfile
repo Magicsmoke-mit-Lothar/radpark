@@ -23,8 +23,22 @@
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		X-Frame-Options DENY
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		-Server
 	}
+}
+
+# Nur für Adressen, die AUSSCHLIESSLICH über HTTPS (Cloudflare) erreichbar sind:
+# Browser merken sich ein Jahr lang "nur noch HTTPS".
+(nur_https) {
+	header Strict-Transport-Security "max-age=31536000"
+}
+
+# Content-Security-Policy fürs Dashboard: Der Browser führt NUR Skripte von dieser Adresse aus.
+# Selbst wenn es jemand schaffen sollte, fremden Code in die Seite zu schmuggeln, läuft er nicht –
+# und kann so z. B. den Login-Schlüssel nicht stehlen.
+(csp_dashboard) {
+	header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 }
 
 (dashboard_und_api) {
@@ -44,6 +58,15 @@
 # --- App-API: https://api.botrics.de (Backend direkt, ohne /api davor) ---
 http://{$API_HOST:api.example.invalid} {
 	import sicherheit
+	import nur_https
+	# Die API liefert (fast) nur JSON – Browser sollen hier gar nichts ausführen
+	header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"
+
+	# Admin- und Entwickler-Funktionen gibt es hier NICHT – nur über admin.botrics.de,
+	# das zusätzlich von Cloudflare Access geschützt ist
+	@gesperrt path /admin /admin/* /dev /dev/*
+	respond @gesperrt "Not found" 404
+
 	reverse_proxy api:3000 {
 		# Nicht vom Besucher vorgeben lassen
 		header_up -X-Forwarded-Prefix
@@ -53,6 +76,8 @@ http://{$API_HOST:api.example.invalid} {
 # --- Admin-Dashboard: https://admin.botrics.de (zusätzlich mit Cloudflare Access schützen!) ---
 http://{$ADMIN_HOST:admin.example.invalid} {
 	import sicherheit
+	import nur_https
+	import csp_dashboard
 	import dashboard_und_api
 }
 
@@ -60,5 +85,6 @@ http://{$ADMIN_HOST:admin.example.invalid} {
 #     Domain (SITE_ADDRESS=radpark.example.com → Caddy holt dann selbst ein HTTPS-Zertifikat) ---
 {$SITE_ADDRESS::80} {
 	import sicherheit
+	import csp_dashboard
 	import dashboard_und_api
 }

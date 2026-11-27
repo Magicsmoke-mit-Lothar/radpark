@@ -145,6 +145,13 @@ Umgesetzt im Server-Betrieb (`deploy/`, Schritt 6a):
 - Simulator-Steuerung nur am eigenen Dock (sonst könnten Tester fremde Parkvorgänge beenden)
 - Echte Besucher-IP hinter Cloudflare über `CF-Connecting-IP` (`CLIENT_IP_HEADER`) – sonst zählte
   die IP-Bremse alle Nutzer als einen
+- Kontosperre nach 10 falschen Codes in 24 h (Rate-Chance ohne Sperre ~20 %/Jahr, mit < 0,4 %/Jahr);
+  während der Sperre werden auch keine Codes mehr verschickt
+- Admin-/Dev-Pfade auf der App-Adresse gesperrt (nur über die Access-geschützte Admin-Adresse)
+- Content-Security-Policy (Dashboard: nur eigene Skripte), HSTS
+- Alle Docker-Ports nur auf 127.0.0.1 (Docker umgeht ufw!); Entwicklungs-Backend standardmäßig nur
+  lokal (`HOST`), fürs Handy bewusst `pnpm dev:api:lan`
+- Nächtliche Datensicherung mit getesteter Wiederherstellung
 
 Noch offen vor dem ersten echten Ständer:
 

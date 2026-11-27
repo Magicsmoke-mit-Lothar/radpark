@@ -85,7 +85,7 @@ HTTP_BIND=127.0.0.1                    # lokalen Zugang auf diesen Rechner besch
 **4. Starten:** `pnpm stage:up` → im Dashboard steht der Tunnel nach ein paar Sekunden auf **Healthy**.
 Protokoll: `pnpm stage:tunnel-logs`. Test im Browser: https://api.botrics.de/health
 
-**5. Admin-Dashboard zusätzlich schützen (dringend empfohlen):** *Access* → *Applications* → **Add an
+**5. Admin-Dashboard zusätzlich schützen (dringend empfohlen, bevor du den Tunnel dauerhaft laufen lässt):** *Access* → *Applications* → **Add an
 application** → *Self-hosted* → Domain `admin.botrics.de` → Policy **Allow**, *Include* → *Emails* →
 deine Adresse. Dann sieht nur noch du überhaupt die Login-Seite. **`api.botrics.de` NICHT schützen** –
 sonst kommt die App nicht mehr durch.
@@ -101,8 +101,36 @@ EXPO_PUBLIC_API_URL=https://api.botrics.de pnpm dev:mobile
 ```
 
 > Dieser Rechner muss dafür laufen (kein Standby). Wird er ausgeschaltet, ist RadPark nicht erreichbar.
-> Mailpit (8025) ist nur von diesem Rechner aus erreichbar, MQTT (1884) nur im Heimnetz – beide
-> laufen NICHT durch den Tunnel.
+> Lokal sind Caddy (8088), MQTT (1884) und Mailpit (8025) **nur von diesem Rechner** aus erreichbar
+> (`HTTP_BIND`/`MQTT_BIND=127.0.0.1`). Wichtig: Docker-Ports umgehen die Firewall (ufw) – deshalb
+> diese Einschränkung direkt in der Konfiguration.
+
+## Datensicherung
+
+Der Dienst `backup` sichert die Datenbank beim Start und jede Nacht um ca. 03:00 Uhr nach
+`deploy/backups/` (14 Tage aufbewahrt, Dateien gehören dir, enthalten persönliche Daten → nie ins Git).
+
+```bash
+pnpm stage:backup                                   # sofort sichern
+pnpm stage:restore radpark-2026-11-28_0300.sql.gz   # zurückspielen (ERSETZT die aktuellen Daten!)
+```
+
+Die Sicherungen liegen auf derselben Festplatte – gegen einen Festplattenausfall hilft nur,
+sie regelmäßig woandershin zu kopieren (USB-Stick, Cloud-Speicher).
+
+## Sicherheits-Übersicht
+
+| Maßnahme | Wo |
+|---|---|
+| Login nur per E-Mail-Code; pro Adresse 1 Code/60 s, 5/Stunde; **Sperre nach 10 falschen Codes in 24 h** | Backend |
+| IP-Bremsen für Code-Anforderung/-Eingabe (hinter Cloudflare mit echter Besucher-IP) | Backend |
+| Admin nur echte Adresse (`ADMIN_EMAIL`); Admin-Funktionen **nur** über `admin.botrics.de` | Backend, Caddy |
+| Cloudflare Access vor `admin.botrics.de` | Cloudflare (selbst einrichten) |
+| Content-Security-Policy, HSTS, X-Frame-Options, nosniff | Caddy |
+| MQTT mit Passwort + Rechten pro Ständer | Mosquitto |
+| Datenbank/Backend/MQTT/Mailpit nicht von außen erreichbar | docker-compose |
+| Nur Stripe-Testmodus; Webhooks nur mit Signatur | Backend |
+| Nächtliche Datensicherung | `backup`-Dienst |
 
 ## Auf einen echten Server (Schritt 6b)
 

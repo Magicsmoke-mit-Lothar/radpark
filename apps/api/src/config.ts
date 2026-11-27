@@ -19,6 +19,12 @@ const ConfigSchema = z.object({
   DATABASE_URL: z.string().url(),
   MQTT_URL: z.string().url().default("mqtt://localhost:1883"),
   PORT: z.coerce.number().int().default(3000),
+  /**
+   * Auf welcher Netzwerk-Adresse lauschen? 127.0.0.1 = nur dieser Rechner (sicher).
+   * 0.0.0.0 = auch andere Geräte im WLAN (nötig fürs Handy – nur in vertrauenswürdigen Netzen!).
+   * Im Docker-Container immer 0.0.0.0 (dort schützt Caddy davor).
+   */
+  HOST: z.string().default("127.0.0.1"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   /** Zeitzone des Betreibers – z. B. für "Umsatz heute" */
   BUSINESS_TIMEZONE: z.string().default("Europe/Berlin"),

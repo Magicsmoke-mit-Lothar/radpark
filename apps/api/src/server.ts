@@ -14,4 +14,9 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
-await app.listen({ port: config.PORT, host: "0.0.0.0" });
+if (config.HOST !== "127.0.0.1" && config.HOST !== "localhost" && (config.DEV_ROUTES || config.DEV_LOGIN_CODES)) {
+  app.log.warn(
+    "⚠️  Entwicklungsmodus ist für ALLE Geräte im Netzwerk erreichbar (Login-Codes in der Antwort, /dev/*). Nur in vertrauenswürdigen WLANs benutzen – in Uni-/Café-WLANs lieber über den Tunnel testen.",
+  );
+}
+await app.listen({ port: config.PORT, host: config.HOST });
