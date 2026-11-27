@@ -9,7 +9,7 @@ Stellplatz, schließen ihr Rad im Ständer ein und bezahlen die Parkzeit.
 apps/
   api/            Backend (Fastify + Drizzle + PostgreSQL/PostGIS)
   simulator/      simulierte Fahrradständer – ersetzen die Hardware, bis es einen Prototyp gibt
-  mobile/         (Schritt 4) App für Radfahrer (Expo / React Native)
+  mobile/         App für Radfahrer (Expo / React Native) – Android zuerst
   admin/          (Schritt 5) Web-Dashboard für Betreiber (Next.js)
 packages/
   protocol/       Der "Vertrag" zwischen Backend und Ständer (MQTT-Topics + Nachrichtenformate)
@@ -76,7 +76,37 @@ Was im Backend passiert ist, zeigt das Event-Log: http://localhost:3000/dev/even
 > Die `/dev/*`-Endpunkte funktionieren nur mit `DEV_ROUTES=true` in `apps/api/.env` und sind
 > ausschließlich für die Entwicklung gedacht.
 
-## Parken über die API (so wird es später die App machen)
+## Die App auf deinem Android-Handy
+
+1. Installiere **Expo Go** aus dem Google Play Store.
+2. Handy und Rechner müssen im **selben WLAN** sein.
+3. Starte in drei Terminals:
+
+   ```bash
+   pnpm dev:api        # Terminal 1: Backend
+   pnpm sim            # Terminal 2: Simulator
+   pnpm dev:mobile     # Terminal 3: App-Server → zeigt einen QR-Code
+   ```
+
+4. Öffne Expo Go und scanne den QR-Code. Die App lädt (beim ersten Mal ca. 30 Sekunden).
+5. Melde dich mit einer beliebigen E-Mail an – der Code erscheint in der App
+   („Entwicklungsmodus: Dein Code ist …“, antippen zum Einsetzen).
+6. Tippe auf der Karte auf eine Station → **Hier parken** → im Simulator-Terminal
+   `parken BER-001 1` eingeben → in der App läuft die Parkzeit. **Rad abholen** →
+   im Simulator `abholen BER-001 1` → fertig.
+
+Änderst du Code in `apps/mobile/src`, aktualisiert sich die App auf dem Handy sofort von selbst.
+
+**Klappt die Verbindung nicht?**
+- „Keine Verbindung zum Server“ in der App → läuft `pnpm dev:api`? Unter *Profil* steht ganz unten,
+  welche Server-Adresse die App benutzt – öffne sie im Handy-Browser, z. B. `http://192.168.1.20:3000/health`.
+- Expo Go findet den Rechner nicht → evtl. blockiert die Linux-Firewall. Ports freigeben:
+  `sudo ufw allow 8081/tcp && sudo ufw allow 3000/tcp`
+- Im Gäste-/Uni-WLAN sind Geräte oft voneinander abgeschirmt → Handy-Hotspot benutzen.
+
+Ohne Handy geht es auch im Browser: im App-Terminal `w` drücken (statt der Karte gibt es dort eine Liste).
+
+## Parken über die API (so macht es die App im Hintergrund)
 
 Backend und Simulator müssen laufen. Dann in einem dritten Terminal:
 
@@ -140,7 +170,8 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 - [x] **Schritt 1 – Fundament:** Monorepo, Docker, Datenmodell, Ständer-Protokoll, Stations-API
 - [x] **Schritt 2 – Ständer-Simulator + MQTT:** simulierte Ständer melden sich, Backend sieht online/offline und Belegung live
 - [x] **Schritt 3 – Parkvorgang:** Nutzer-Login, reservieren → entriegeln → einstellen → abholen, Preisberechnung, Event-Log
-- [ ] **Schritt 4 – Mobile App:** Karte, Station wählen, parken, Live-Status
+- [x] **Schritt 4 – Mobile App (Android):** Login, Karte, parken, Live-Status, Abholen, Verlauf
+  - [ ] später: iOS testen, Live-Updates per WebSocket statt Nachfragen, „Navigation zur Station“
 - [ ] **Schritt 5 – Bezahlung + Admin-Dashboard:** Stripe (Testmodus), Betreiber-Übersicht, Störungen
 - [ ] **Schritt 6 – Betrieb:** Tests, CI, Deployment, Sicherheit (TLS + Zugangsdaten pro Ständer)
 - [ ] **Schritt 7 – Hardware-Prototyp:** ESP32-Firmware mit demselben Protokoll wie der Simulator

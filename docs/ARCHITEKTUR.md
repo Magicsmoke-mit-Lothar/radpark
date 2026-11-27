@@ -77,6 +77,20 @@ stations 1───n docks 1───n parking_sessions n───1 users
 **Login ohne Passwort**: E-Mail → 6-stelliger Code (10 Min., max. 5 Versuche) → Token (90 Tage).
 Gespeichert werden nur Hashes von Codes und Tokens.
 
+## Mobile App (`apps/mobile`)
+
+| Baustein | Wofür |
+|---|---|
+| **Expo SDK 58 + Expo Router** | Eine Codebasis für Android & iOS; jede Datei in `src/app/` ist ein Bildschirm |
+| `Stack.Protected` | Ohne Login sind nur Login-Bildschirm erreichbar, mit Login nur die Tabs |
+| **TanStack Query** (`src/lib/queries.ts`) | Lädt Daten, hält sie aktuell (Stationen alle 10 s, laufendes Parken alle 2 s) |
+| `src/lib/api.ts` | Einzige Stelle, die mit dem Backend spricht – inkl. Datentypen |
+| **expo-secure-store** | Login-Token verschlüsselt auf dem Handy speichern |
+| **react-native-maps** | Karte (Google Maps auf Android). Läuft in Expo Go ohne API-Schlüssel; für den Play Store braucht es später einen. |
+| `*.web.tsx` | Browser-Ersatz für handy-spezifische Teile (Karte → Liste), nur zum Entwickeln |
+
+Fehlercodes vom Backend (`NO_FREE_DOCK` …) übersetzt `src/lib/format.ts` in deutsche Meldungen.
+
 ## Skalierung – wie das später wächst
 
 Das MVP läuft auf einem Server. Die Architektur ist so gewählt, dass man später ohne Umbau ausbauen kann:
