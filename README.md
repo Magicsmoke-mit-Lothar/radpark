@@ -272,7 +272,9 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
   - [ ] Stripe-Testmodus mit echten Testschlüsseln durchspielen · Stripe-Webhooks (brauchen öffentliche Adresse → Schritt 6)
 - [x] **Schritt 6a – Docker/Staging:** komplettes System in Docker, Caddy (HTTPS-fähig), Login-Codes per E-Mail,
   MQTT mit Passwort + Rechten pro Ständer, Stripe-Webhook, abgeschaltete Dev-Funktionen → [deploy/README.md](deploy/README.md)
-- [ ] **Schritt 6b – Server & Test-APK:** echter Server mit Domain + HTTPS, Test-APK für Android
+- [x] **Schritt 6b (Teil 1) – Cloudflare-Tunnel:** öffentlich unter https://api.botrics.de / https://admin.botrics.de
+  ohne offene Ports (Anleitung: [deploy/README.md](deploy/README.md))
+- [ ] **Schritt 6b (Teil 2) – Test-APK:** Android-App zum direkten Installieren (EAS Build)
 - [ ] **Schritt 7 – Hardware-Prototyp:** ESP32-Firmware mit demselben Protokoll wie der Simulator
 - [ ] **Schritt 8 – Gamification:** Punkte, Streaks, Abzeichen, CO₂-Bilanz – berechnet aus dem Event-Log
 

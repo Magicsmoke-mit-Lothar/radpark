@@ -1,30 +1,64 @@
-# Caddy: die "Eingangstür" des Servers.
-#  - /api/*  → Backend (das /api wird vorher abgeschnitten)
-#  - alles andere → Admin-Dashboard
+# Caddy: die "Eingangstür" des Servers – verteilt Anfragen nach Adresse.
 #
-# SITE_ADDRESS bestimmt, wie Caddy erreichbar ist:
-#  - ":80"                  → einfaches HTTP (lokaler Test)
-#  - "radpark.example.com"  → Caddy holt AUTOMATISCH ein HTTPS-Zertifikat (Let's Encrypt)
-{$SITE_ADDRESS::80} {
-	encode gzip
+#   https://API_HOST     (z. B. api.botrics.de)    → Backend         (für die App)
+#   https://ADMIN_HOST   (z. B. admin.botrics.de)  → Admin-Dashboard + /api
+#   http://localhost:8088 (Heimnetz / ohne Tunnel) → Admin-Dashboard + /api
+#
+# Mit Cloudflare-Tunnel übernimmt CLOUDFLARE die Verschlüsselung (HTTPS). Zwischen cloudflared und
+# Caddy läuft einfaches HTTP im internen Docker-Netz – darum "http://" vor den Adressen
+# (sonst würde Caddy selbst versuchen, Zertifikate zu holen).
 
+{
+	servers {
+		# Anfragen aus dem internen Netz (cloudflared-Container) dürfen uns sagen, was der
+		# Besucher eigentlich aufgerufen hat (https, echte IP, Hostname). Ohne das hielte das
+		# Backend jede Verbindung für unverschlüsseltes HTTP → falsche Rückleitung nach Stripe.
+		trusted_proxies static private_ranges
+	}
+}
+
+(sicherheit) {
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		-Server
+	}
+}
+
+(dashboard_und_api) {
 	handle_path /api/* {
 		reverse_proxy api:3000 {
 			# Dem Backend sagen, dass es von außen unter /api erreichbar ist
 			header_up X-Forwarded-Prefix /api
 		}
 	}
-
 	handle {
 		root * /srv/admin
 		try_files {path} /index.html
 		file_server
 	}
+}
 
-	# Ein paar Sicherheits-Header für Browser
-	header {
-		X-Content-Type-Options nosniff
-		Referrer-Policy strict-origin-when-cross-origin
-		-Server
+# --- App-API: https://api.botrics.de (Backend direkt, ohne /api davor) ---
+http://{$API_HOST:api.example.invalid} {
+	import sicherheit
+	reverse_proxy api:3000 {
+		# Nicht vom Besucher vorgeben lassen
+		header_up -X-Forwarded-Prefix
 	}
+}
+
+# --- Admin-Dashboard: https://admin.botrics.de (zusätzlich mit Cloudflare Access schützen!) ---
+http://{$ADMIN_HOST:admin.example.invalid} {
+	import sicherheit
+	import dashboard_und_api
+}
+
+# --- Alles andere: lokal / Heimnetz (http://localhost:8088) oder ein eigener Server mit
+#     Domain (SITE_ADDRESS=radpark.example.com → Caddy holt dann selbst ein HTTPS-Zertifikat) ---
+{$SITE_ADDRESS::80} {
+	import sicherheit
+	import dashboard_und_api
 }

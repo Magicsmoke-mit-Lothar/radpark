@@ -6,7 +6,9 @@
 #
 # Erreichbar:   http://localhost:8088        Admin-Dashboard
 #               http://localhost:8088/api    Backend (für die App)
-#               http://localhost:8025        Mailpit (abgefangene E-Mails, nur Test)
+#               http://localhost:8025        Mailpit (abgefangene E-Mails, nur Test, nur dieser Rechner)
+# Mit Cloudflare-Tunnel (COMPOSE_PROFILES=tunnel + CLOUDFLARE_TUNNEL_TOKEN in .env):
+#               https://API_HOST    / https://ADMIN_HOST
 #               mqtt://localhost:1884        Broker für Ständer (nur mit Passwort)
 name: radpark-stage
 
@@ -95,8 +97,11 @@ services:
       - api
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      API_HOST: ${API_HOST:-}
+      ADMIN_HOST: ${ADMIN_HOST:-}
     ports:
-      - "${HTTP_PORT:-8088}:80"
+      # Lokaler Zugang (Heimnetz). Mit Tunnel nicht nötig → HTTP_BIND=127.0.0.1 = nur dieser Rechner
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8088}:80"
       # Für echtes HTTPS auf einem Server zusätzlich: "443:443" (und HTTP_PORT=80)
     volumes:
       - caddydata:/data # HTTPS-Zertifikate
@@ -106,7 +111,8 @@ services:
     image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
-      - "${MAILPIT_PORT:-8025}:8025"
+      # Nur von diesem Rechner aus erreichbar – hier liegen (Test-)Login-Codes!
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
 
   # Simulator statt echter Ständer. Bedienen: docker attach radpark-stage-simulator-1
   # (wieder lösen ohne Beenden: Strg+P, dann Strg+Q)
@@ -128,6 +134,20 @@ services:
       SIM_STATE_FILE: /data/sim-state.json
     volumes:
       - simdata:/data
+
+  # Cloudflare-Tunnel: verbindet sich VON INNEN mit Cloudflare – kein offener Port am Router.
+  # Wohin welche Adresse geht, stellst du im Cloudflare-Dashboard ein (→ http://web:80).
+  # Nur aktiv mit COMPOSE_PROFILES=tunnel in deploy/.env.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      # Ohne Token startet cloudflared nicht (nur relevant mit COMPOSE_PROFILES=tunnel)
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - web
 
 volumes:
   pgdata:

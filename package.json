@@ -25,6 +25,7 @@
     "stage:logs": "docker compose -f deploy/docker-compose.yml logs -f --tail 50",
     "stage:seed": "docker compose -f deploy/docker-compose.yml exec api sh -c 'cd apps/api && node_modules/.bin/tsx src/db/seed.ts' && docker compose -f deploy/docker-compose.yml restart simulator",
     "stage:sim": "docker attach radpark-stage-simulator-1",
+    "stage:tunnel-logs": "docker compose -f deploy/docker-compose.yml logs -f --tail 30 cloudflared",
     "stage:mail-test": "docker compose -f deploy/docker-compose.yml exec api sh -c 'cd apps/api && node_modules/.bin/tsx src/scripts/send-test-mail.ts \"$0\"'",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r --if-present test"

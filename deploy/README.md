@@ -53,6 +53,57 @@ Parken klappt mit den 🛠-Knöpfen (der Simulator läuft als eigener Container)
 *seine eigenen* Topics benutzen – BER-001 kann sich nicht als BER-002 ausgeben. Im Testbetrieb haben
 alle Ständer dasselbe Passwort; echte Ständer bekommen jeweils ein eigenes.
 
+## Öffentlich erreichbar mit Cloudflare-Tunnel (auf diesem Rechner)
+
+Kein offener Port am Router: `cloudflared` baut die Verbindung **von innen** zu Cloudflare auf.
+Cloudflare übernimmt HTTPS. Voraussetzung: Die Domain (hier `botrics.de`) wird bei Cloudflare verwaltet.
+
+```
+App  ──https://api.botrics.de───┐
+Web  ──https://admin.botrics.de─┴─▶ Cloudflare ══Tunnel══▶ cloudflared ─▶ Caddy (web:80) ─▶ Backend / Dashboard
+```
+
+**1. Tunnel anlegen** – https://one.dash.cloudflare.com → *Networks* → *Tunnels* → **Create a tunnel**
+→ Typ **Cloudflared** → Name `radpark` → bei „Install and run a connector“ **Docker** wählen und aus dem
+angezeigten Befehl den langen Wert nach `--token` kopieren.
+
+**2. Token eintragen** in `deploy/.env` (niemals in Chats oder ins Git):
+```
+CLOUDFLARE_TUNNEL_TOKEN=eyJh…          # der kopierte Wert
+COMPOSE_PROFILES=tunnel                # cloudflared-Container mitstarten
+HTTP_BIND=127.0.0.1                    # lokalen Zugang auf diesen Rechner beschränken (empfohlen)
+```
+(`API_HOST`, `ADMIN_HOST` und `CLIENT_IP_HEADER=cf-connecting-ip` sind schon gesetzt.)
+
+**3. Adressen zuordnen** – im Tunnel unter *Public Hostnames* / *Published application routes* zwei Einträge:
+
+| Subdomain | Domain | Service-Typ | URL |
+|---|---|---|---|
+| `api` | `botrics.de` | HTTP | `web:80` |
+| `admin` | `botrics.de` | HTTP | `web:80` |
+
+**4. Starten:** `pnpm stage:up` → im Dashboard steht der Tunnel nach ein paar Sekunden auf **Healthy**.
+Protokoll: `pnpm stage:tunnel-logs`. Test im Browser: https://api.botrics.de/health
+
+**5. Admin-Dashboard zusätzlich schützen (dringend empfohlen):** *Access* → *Applications* → **Add an
+application** → *Self-hosted* → Domain `admin.botrics.de` → Policy **Allow**, *Include* → *Emails* →
+deine Adresse. Dann sieht nur noch du überhaupt die Login-Seite. **`api.botrics.de` NICHT schützen** –
+sonst kommt die App nicht mehr durch.
+
+**6. Stripe-Webhook (optional, Testmodus):** Stripe-Dashboard → *Entwickler* → *Webhooks* →
+Endpunkt `https://api.botrics.de/webhooks/stripe`, Ereignisse `checkout.session.completed`,
+`checkout.session.async_payment_succeeded`, `checkout.session.expired` → das *Signing secret* (`whsec_…`)
+in `STRIPE_WEBHOOK_SECRET` eintragen → `pnpm stage:up`.
+
+**7. App gegen die öffentliche Adresse** – funktioniert jetzt auch über mobile Daten:
+```bash
+EXPO_PUBLIC_API_URL=https://api.botrics.de pnpm dev:mobile
+```
+
+> Dieser Rechner muss dafür laufen (kein Standby). Wird er ausgeschaltet, ist RadPark nicht erreichbar.
+> Mailpit (8025) ist nur von diesem Rechner aus erreichbar, MQTT (1884) nur im Heimnetz – beide
+> laufen NICHT durch den Tunnel.
+
 ## Auf einen echten Server (Schritt 6b)
 
 1. Server mieten (z. B. Hetzner, ~5 €/Monat), Docker installieren, Projekt hinkopieren.
