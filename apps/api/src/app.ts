@@ -1,11 +1,13 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import { sql } from "drizzle-orm";
 import { adminRoutes } from "./admin/routes";
 import { authRoutes } from "./auth/routes";
 import { config } from "./config";
 import { db } from "./db/client";
 import { AppError } from "./errors";
+import { verifyMailTransport } from "./mailer";
 import { MqttGateway } from "./mqtt/connection";
 import { parkingRoutes } from "./parking/routes";
 import { ParkingService } from "./parking/service";
@@ -21,6 +23,9 @@ export async function buildApp() {
   const app = Fastify({ logger: { level: config.LOG_LEVEL }, trustProxy: config.TRUST_PROXY });
   app.decorateRequest("userId", null);
   app.decorateRequest("userRole", null);
+
+  // E-Mail-Versand prüfen (nur Hinweis im Log – das Backend startet trotzdem)
+  verifyMailTransport(app.log);
 
   // Verbindung zu den Fahrradständern (über den MQTT-Broker)
   const mqtt = new MqttGateway(app.log);
@@ -55,7 +60,7 @@ export async function buildApp() {
   // Einheitliche Fehlerantworten: { error: "CODE", message: "…" }
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) {
-      return reply.code(err.status).send({ error: err.code, message: err.message });
+      return reply.code(err.status).send({ error: err.code, message: err.message, ...err.details });
     }
     const status = (err as { statusCode?: number }).statusCode;
     if (status && status < 500) {
@@ -66,6 +71,17 @@ export async function buildApp() {
   });
 
   await app.register(cors, { origin: true }); // in Produktion auf eigene Domains beschränken
+
+  // Bremse gegen Missbrauch: Grenzen werden pro Route festgelegt (z. B. beim Login).
+  // Hinweis Skalierung: Zähler liegen im Arbeitsspeicher – bei mehreren Backend-Instanzen
+  // stattdessen Redis als gemeinsamen Speicher verwenden.
+  await app.register(rateLimit, {
+    global: false,
+    errorResponseBuilder: (_req, ctx) =>
+      new AppError(429, "TOO_MANY_REQUESTS", `Zu viele Anfragen – bitte in ${Math.ceil(ctx.ttl / 1000)} s erneut versuchen`, {
+        retryAfterSeconds: Math.ceil(ctx.ttl / 1000),
+      }),
+  });
 
   /** GET /health → "lebt der Server, erreicht er Datenbank und Broker?" (für Monitoring/Load-Balancer) */
   app.get("/health", async (_req, reply) => {

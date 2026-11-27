@@ -134,6 +134,9 @@ Das MVP läuft auf einem Server. Die Architektur ist so gewählt, dass man spät
 
 Umgesetzt im Server-Betrieb (`deploy/`, Schritt 6a):
 - Login-Codes nur per E-Mail (`DEV_LOGIN_CODES=false`), `/dev/*` aus (`DEV_ROUTES=false`)
+- Bremsen gegen Missbrauch: pro E-Mail 1 Code / 60 s und 5 / Stunde (in der Datenbank → gilt auch
+  bei mehreren Backend-Instanzen), pro IP Grenzen für Anfordern/Eingeben (`@fastify/rate-limit`,
+  im Arbeitsspeicher → bei mehreren Instanzen auf Redis umstellen)
 - MQTT: kein anonymer Zugriff, Benutzername = Stationscode, ACL erlaubt nur eigene Topics
 - Datenbank und Backend nicht von außen erreichbar – nur über Caddy (später mit HTTPS)
 - Stripe-Webhooks nur mit gültiger Signatur; Gutschrift trotzdem erst nach Rückfrage bei Stripe

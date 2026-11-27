@@ -204,6 +204,41 @@ Im Simulator `abholen BER-001 1` → Vorgang beendet, Preis berechnet: `curl loc
 Fehler kommen immer als `{ "error": "CODE", "message": "…" }`, z. B. `NO_FREE_DOCK`, `ALREADY_PARKING`,
 `STATION_OFFLINE`. Die App übersetzt den Code in eine verständliche Meldung.
 
+## Login-E-Mails einrichten
+
+Login-Codes werden per **SMTP** verschickt – das kann jeder E-Mail-Anbieter. Eintragen in
+`apps/api/.env` (Entwicklung) bzw. `deploy/.env` (Docker/Server):
+
+**Variante 1 – Gmail (am schnellsten, ohne eigene Domain, gut für Tests):**
+1. Im Google-Konto die **Bestätigung in zwei Schritten** aktivieren.
+2. Unter https://myaccount.google.com/apppasswords ein **App-Passwort** erstellen (16 Zeichen, Leerzeichen weglassen).
+3. Eintragen (das `@` im Benutzernamen als `%40` schreiben):
+   ```
+   SMTP_URL=smtps://deine.adresse%40gmail.com:APPPASSWORT@smtp.gmail.com:465
+   MAIL_FROM=RadPark <deine.adresse@gmail.com>
+   ```
+   Grenze: ca. 500 E-Mails pro Tag. Empfänger sehen deine Gmail-Adresse als Absender.
+
+**Variante 2 – Brevo (empfohlen, sobald du eine eigene Domain hast):** kostenlos bis 300 E-Mails/Tag.
+1. Konto auf brevo.com → *Senders, Domains & Dedicated IPs* → **Domain authentifizieren**
+   (Brevo zeigt DNS-Einträge – bei Cloudflare in 2 Minuten eingetragen). Ohne eigene Domain
+   landen Mails von Freemail-Absendern oft im Spam.
+2. *SMTP & API* → SMTP-Schlüssel erzeugen. Eintragen:
+   ```
+   SMTP_URL=smtp://DEIN-SMTP-LOGIN:DEIN-SMTP-SCHLÜSSEL@smtp-relay.brevo.com:587
+   MAIL_FROM=RadPark <login@deine-domain.de>
+   ```
+
+Sonderzeichen im Passwort (z. B. `@ : / #`) müssen URL-kodiert werden (`@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`).
+
+**Testen:** `pnpm mail:test deine@adresse.de` (Entwicklung) bzw. `pnpm stage:mail-test deine@adresse.de` (Docker).
+Beim Start schreibt das Backend außerdem „📧 E-Mail-Versand bereit“ – oder einen Fehler, wenn
+Server oder Zugangsdaten nicht stimmen.
+
+**Schutz gegen Missbrauch** (eingebaut): pro E-Mail-Adresse höchstens alle 60 s ein Code und
+5 pro Stunde; pro IP-Adresse 20 Anforderungen pro Stunde und 60 Code-Eingaben pro 15 Minuten
+(`LOGIN_CODE_REQUESTS_PER_HOUR`, `LOGIN_VERIFY_PER_15_MIN`).
+
 ## Server-Betrieb / Docker
 
 Siehe **[deploy/README.md](deploy/README.md)** – kurz: `pnpm stage:up`, `pnpm stage:seed`,

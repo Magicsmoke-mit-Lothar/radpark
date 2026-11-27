@@ -47,6 +47,12 @@ const ConfigSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  // --- Bremsen gegen Missbrauch (pro IP-Adresse) ---
+  /** Code-Anforderungen pro Stunde und IP (zusätzlich gilt: pro E-Mail max. 1 / 60 s und 5 / Stunde) */
+  LOGIN_CODE_REQUESTS_PER_HOUR: z.coerce.number().int().positive().default(20),
+  /** Code-Eingaben pro 15 Minuten und IP */
+  LOGIN_VERIFY_PER_15_MIN: z.coerce.number().int().positive().default(60),
+
   // --- E-Mail (Login-Codes) ---
   /** z. B. smtp://benutzer:passwort@smtp.anbieter.de:587 – leer = kein E-Mail-Versand */
   SMTP_URL: z.string().trim().optional().or(z.literal("").transform(() => undefined)),

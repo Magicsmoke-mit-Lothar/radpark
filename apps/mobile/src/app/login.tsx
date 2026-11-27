@@ -2,13 +2,14 @@
  * Login in zwei Schritten: 1. E-Mail eingeben → 2. Code aus der E-Mail eingeben.
  */
 import { useState } from 'react';
+import { useNow } from '@/hooks/use-now';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { AppText, Banner } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { errorMessage } from '@/lib/format';
 
@@ -21,19 +22,36 @@ export default function LoginScreen() {
   const [devCode, setDevCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  /** Ab wann darf ein neuer Code angefordert werden? (Zeitstempel in ms) */
+  const [resendAt, setResendAt] = useState(0);
+  const now = useNow(1000);
+  // Abrunden: "now" kann bis zu 1 s hinterherhinken (aktualisiert sich nur sekündlich)
+  const resendIn = Math.max(0, Math.floor((resendAt - now) / 1000));
 
   const inputStyle = [styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.card }];
 
   async function requestCode() {
     setBusy(true);
     setError(null);
+    setInfo(null);
     try {
       const res = await api.requestCode(email);
       setDevCode(res.devCode ?? null);
+      setResendAt(Date.now() + res.resendAfterSeconds * 1000);
       setCode('');
       setStep('code');
+      if (step === 'code') setInfo('Neuer Code ist unterwegs ✉️');
     } catch (err) {
-      setError(errorMessage(err));
+      // Gerade erst einen Code bekommen (z. B. nach "zurück")? Dann einfach zur Code-Eingabe –
+      // der erste Code ist ja noch gültig.
+      if (err instanceof ApiError && err.code === 'TOO_MANY_REQUESTS' && Number(err.details.retryAfterSeconds) <= 60) {
+        setResendAt(Date.now() + Number(err.details.retryAfterSeconds) * 1000);
+        setStep('code');
+        setInfo('Wir haben dir gerade schon einen Code geschickt – er ist noch gültig.');
+      } else {
+        setError(errorMessage(err));
+      }
     } finally {
       setBusy(false);
     }
@@ -117,14 +135,25 @@ export default function LoginScreen() {
                 maxLength={6}
                 accessibilityLabel="Login-Code"
               />
+              {info && <Banner tone="success">{info}</Banner>}
               {error && <Banner>{error}</Banner>}
               <Button title="Anmelden" onPress={() => verify()} loading={busy} disabled={code.length !== 6} />
+              <AppText variant="small" style={{ textAlign: 'center' }}>
+                Keine E-Mail bekommen? Schau auch im Spam-Ordner nach.
+              </AppText>
+              <Button
+                title={resendIn > 0 ? `Code erneut senden (${resendIn} s)` : 'Code erneut senden'}
+                variant="secondary"
+                disabled={resendIn > 0 || busy}
+                onPress={requestCode}
+              />
               <Button
                 title="Andere E-Mail verwenden"
                 variant="secondary"
                 onPress={() => {
                   setStep('email');
                   setError(null);
+                  setInfo(null);
                 }}
               />
             </View>

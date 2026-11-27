@@ -73,6 +73,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** Weitere Felder der Fehlerantwort, z. B. retryAfterSeconds */
+    readonly details: Record<string, unknown> = {},
   ) {
     super(message);
   }
@@ -117,7 +119,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     if (res.status === 401 && authToken) onUnauthorized?.();
-    throw new ApiError(res.status, data?.error ?? 'UNKNOWN', data?.message ?? `HTTP ${res.status}`);
+    throw new ApiError(res.status, data?.error ?? 'UNKNOWN', data?.message ?? `HTTP ${res.status}`, data ?? {});
   }
   return data as T;
 }
@@ -126,7 +128,8 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
 // Die einzelnen Endpunkte
 // ---------------------------------------------------------------------------
 export const api = {
-  requestCode: (email: string) => request<{ sent: boolean; devCode?: string }>('POST', '/auth/request-code', { email }),
+  requestCode: (email: string) =>
+    request<{ sent: boolean; resendAfterSeconds: number; devCode?: string }>('POST', '/auth/request-code', { email }),
   verifyCode: (email: string, code: string) =>
     request<{ token: string; user: User }>('POST', '/auth/verify', { email, code }),
   me: () => request<User>('GET', '/me'),

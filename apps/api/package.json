@@ -11,10 +11,12 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
-    "admin:grant": "tsx src/scripts/grant-admin.ts"
+    "admin:grant": "tsx src/scripts/grant-admin.ts",
+    "mail:test": "tsx src/scripts/send-test-mail.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.4.3",
+    "@fastify/rate-limit": "^11.3.0",
     "@radpark/protocol": "workspace:*",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",

@@ -57,10 +57,11 @@ alle Ständer dasselbe Passwort; echte Ständer bekommen jeweils ein eigenes.
 2. Domain auf den Server zeigen lassen, in `deploy/.env`: `SITE_ADDRESS=radpark.deine-domain.de`,
    `HTTP_PORT=80` und in `docker-compose.yml` beim Dienst `web` zusätzlich `443:443` freigeben →
    Caddy holt sich **automatisch** ein HTTPS-Zertifikat.
-3. Echten SMTP-Anbieter in `SMTP_URL` eintragen (z. B. Brevo, kostenloses Kontingent).
+3. Echten SMTP-Anbieter in `SMTP_URL` eintragen (Anleitung: „Login-E-Mails einrichten“ in der
+   Haupt-README), testen mit `pnpm stage:mail-test deine@adresse.de`.
 4. Im Stripe-Dashboard (Testmodus) einen Webhook auf `https://radpark.deine-domain.de/api/webhooks/stripe`
    anlegen (Ereignis `checkout.session.completed`) und das `whsec_…` in `STRIPE_WEBHOOK_SECRET` eintragen.
 5. Firewall: nur 80, 443 und 1884 (MQTT für Ständer) öffnen.
 
 > Noch offen für echten Betrieb: MQTT über TLS (verschlüsselt, Port 8883), eigene Passwörter pro
-> Ständer, Backups der Datenbank, Rate-Limiting für Login-Codes.
+> Ständer, Backups der Datenbank. (Rate-Limiting für Login-Codes ist eingebaut.)

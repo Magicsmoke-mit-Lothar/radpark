@@ -13,6 +13,9 @@ import { recordEvent } from "../events";
 
 const CODE_TTL_MS = 10 * 60 * 1000; // 10 Minuten
 const MAX_ATTEMPTS = 5; // danach ist der Code verbrannt (Schutz gegen Durchprobieren)
+export const RESEND_COOLDOWN_SECONDS = 60; // frühestens nach 60 s ein neuer Code für dieselbe Adresse
+const MAX_CODES_PER_HOUR = 5; // pro E-Mail-Adresse
+export const CODE_TTL_MINUTES = CODE_TTL_MS / 60_000;
 const TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 Tage eingeloggt bleiben
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -21,6 +24,26 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 /** Schritt 1: Code erzeugen. Gibt den Klartext-Code zurück, damit er verschickt werden kann. */
 export async function createLoginCode(rawEmail: string): Promise<string> {
   const email = normalizeEmail(rawEmail);
+
+  // Bremse pro Adresse: niemand soll fremde Postfächer mit Codes fluten können
+  const recent = await db
+    .select({ createdAt: loginCodes.createdAt })
+    .from(loginCodes)
+    .where(and(eq(loginCodes.email, email), gt(loginCodes.createdAt, new Date(Date.now() - 3600_000))))
+    .orderBy(desc(loginCodes.createdAt));
+  const last = recent[0];
+  if (last) {
+    const wait = RESEND_COOLDOWN_SECONDS - Math.floor((Date.now() - last.createdAt.getTime()) / 1000);
+    if (wait > 0) {
+      throw new AppError(429, "TOO_MANY_REQUESTS", `Bitte warte ${wait} s, bevor du einen neuen Code anforderst`, { retryAfterSeconds: wait });
+    }
+  }
+  if (recent.length >= MAX_CODES_PER_HOUR) {
+    const oldest = recent[recent.length - 1]!.createdAt.getTime();
+    const wait = Math.ceil((oldest + 3600_000 - Date.now()) / 1000);
+    throw new AppError(429, "TOO_MANY_REQUESTS", "Zu viele Codes angefordert – bitte später erneut versuchen", { retryAfterSeconds: wait });
+  }
+
   const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
 
   await db.transaction(async (tx) => {

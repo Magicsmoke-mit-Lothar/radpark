@@ -8,7 +8,7 @@ import { parseInput } from "../errors";
 import { bearerToken, currentUserId, requireAuth } from "./guard";
 import { AppError } from "../errors";
 import { mailEnabled, sendLoginCode } from "../mailer";
-import { createLoginCode, revokeToken, verifyLoginCode } from "./service";
+import { createLoginCode, RESEND_COOLDOWN_SECONDS, revokeToken, verifyLoginCode } from "./service";
 
 // Leerzeichen & Großbuchstaben entfernen, BEVOR geprüft wird ("Anna@Test.de " → "anna@test.de")
 const Email = z.string().trim().toLowerCase().pipe(z.email());
@@ -17,7 +17,8 @@ const VerifyBody = z.object({ email: Email, code: z.string().trim().regex(/^\d{6
 
 export async function authRoutes(app: FastifyInstance) {
   /** POST /auth/request-code {email} → schickt einen Login-Code */
-  app.post("/auth/request-code", async (req) => {
+  // Pro IP-Adresse begrenzt (zusätzlich zur Bremse pro E-Mail-Adresse in service.ts)
+  app.post("/auth/request-code", { config: { rateLimit: { max: config.LOGIN_CODE_REQUESTS_PER_HOUR, timeWindow: "1 hour" } } }, async (req) => {
     const { email } = parseInput(RequestCodeBody, req.body);
     const code = await createLoginCode(email);
 
@@ -31,14 +32,15 @@ export async function authRoutes(app: FastifyInstance) {
     }
     if (config.DEV_LOGIN_CODES) {
       req.log.info(`📧 Login-Code für ${email}: ${code}`);
-      return { sent: true, devCode: code }; // nur in der Entwicklung mitschicken!
+      return { sent: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS, devCode: code }; // devCode nur in der Entwicklung!
     }
     if (!mailEnabled) req.log.warn("Kein E-Mail-Versand konfiguriert – Login-Code kann nicht zugestellt werden");
-    return { sent: true };
+    return { sent: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS };
   });
 
   /** POST /auth/verify {email, code} → {token, user} */
-  app.post("/auth/verify", async (req) => {
+  // Pro IP-Adresse begrenzt (gegen massenhaftes Durchprobieren von Codes)
+  app.post("/auth/verify", { config: { rateLimit: { max: config.LOGIN_VERIFY_PER_15_MIN, timeWindow: "15 minutes" } } }, async (req) => {
     const { email, code } = parseInput(VerifyBody, req.body);
     const { token, user } = await verifyLoginCode(email, code);
     return { token, user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role } };

@@ -46,6 +46,7 @@ const MESSAGES: Record<string, string> = {
   NETWORK: 'Keine Verbindung zum Server. Bist du im selben WLAN wie dein Rechner und läuft das Backend?',
   INVALID_INPUT: 'Bitte überprüfe deine Eingabe.',
   INVALID_CODE: 'Der Code ist falsch oder abgelaufen.',
+  MAIL_FAILED: 'Die E-Mail konnte gerade nicht verschickt werden. Bitte versuche es gleich noch einmal.',
   UNAUTHORIZED: 'Bitte melde dich erneut an.',
   STATION_OFFLINE: 'Diese Station ist gerade nicht erreichbar. Bitte versuche es gleich noch einmal.',
   NO_FREE_DOCK: 'An dieser Station ist leider kein Platz mehr frei.',
@@ -60,6 +61,10 @@ const MESSAGES: Record<string, string> = {
 };
 
 export function errorMessage(err: unknown): string {
+  if (err instanceof ApiError && err.code === 'TOO_MANY_REQUESTS') {
+    const s = Number(err.details.retryAfterSeconds ?? 0);
+    return s > 90 ? `Zu viele Versuche. Bitte warte etwa ${Math.ceil(s / 60)} Minuten.` : `Zu viele Versuche. Bitte warte ${s || 'einige'} Sekunden.`;
+  }
   if (err instanceof ApiError) return MESSAGES[err.code] ?? err.message;
   return 'Etwas ist schiefgelaufen. Bitte versuche es erneut.';
 }

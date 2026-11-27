@@ -10,6 +10,8 @@ export class AppError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** Zusätzliche Felder für die Antwort, z. B. { retryAfterSeconds: 42 } */
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
   }

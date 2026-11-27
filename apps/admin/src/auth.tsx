@@ -3,7 +3,7 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { api, setOnUnauthorized, tokenStore, type User } from './api';
+import { api, ApiError, setOnUnauthorized, tokenStore, type User } from './api';
 import { AuthContext } from './auth-context';
 import { errorText } from './format';
 
@@ -64,6 +64,8 @@ function LoginForm({ onSuccess }: { onSuccess: (u: User) => void }) {
         onSuccess(r.user);
       }
     } catch (err) {
+      // Gerade erst einen Code bekommen? Dann direkt zur Code-Eingabe – der erste ist noch gültig.
+      if (step === 'email' && err instanceof ApiError && err.code === 'TOO_MANY_REQUESTS') setStep('code');
       setError(errorText(err));
     } finally {
       setBusy(false);
@@ -88,6 +90,7 @@ function LoginForm({ onSuccess }: { onSuccess: (u: User) => void }) {
                 Entwicklungsmodus: Code {devCode} – klicken zum Einsetzen
               </button>
             )}
+            <p className="muted small">Wir haben dir einen Code per E-Mail geschickt (auch im Spam-Ordner nachsehen).</p>
             <label>
               Code aus der E-Mail
               <input inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" autoFocus required />
