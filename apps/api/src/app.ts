@@ -1,11 +1,12 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import { sql } from "drizzle-orm";
+import { and, eq, like, sql } from "drizzle-orm";
 import { adminRoutes } from "./admin/routes";
 import { authRoutes } from "./auth/routes";
 import { config } from "./config";
 import { db } from "./db/client";
+import { users } from "./db/schema";
 import { AppError } from "./errors";
 import { verifyMailTransport } from "./mailer";
 import { MqttGateway } from "./mqtt/connection";
@@ -18,6 +19,18 @@ import { FakeProvider, StripeProvider } from "./wallet/providers";
 import { walletRoutes } from "./wallet/routes";
 import { WalletService } from "./wallet/service";
 
+/**
+ * Echte Besucher-IP (für die IP-Bremse). Hinter einem Cloudflare-Tunnel kämen sonst ALLE Anfragen
+ * scheinbar vom Tunnel-Container – die Bremse würde dann für alle Nutzer gemeinsam zählen.
+ */
+export function clientIp(req: FastifyRequest): string {
+  if (config.CLIENT_IP_HEADER) {
+    const v = req.headers[config.CLIENT_IP_HEADER];
+    if (typeof v === "string" && v.length > 0 && v.length < 64) return v.trim();
+  }
+  return req.ip;
+}
+
 /** Baut die Web-App zusammen (getrennt von server.ts, damit wir sie später in Tests starten können) */
 export async function buildApp() {
   const app = Fastify({ logger: { level: config.LOG_LEVEL }, trustProxy: config.TRUST_PROXY });
@@ -26,6 +39,22 @@ export async function buildApp() {
 
   // E-Mail-Versand prüfen (nur Hinweis im Log – das Backend startet trotzdem)
   verifyMailTransport(app.log);
+
+  // Sicherheits-Check: Admins mit erfundenen Adressen (gehören niemandem → wer die Domain kauft, wird Admin)
+  if (!config.DEV_LOGIN_CODES) {
+    db.select({ email: users.email })
+      .from(users)
+      .where(and(eq(users.role, "admin"), like(users.email, "%@radpark.dev")))
+      .then((rows) => {
+        if (rows.length) {
+          app.log.error(
+            { admins: rows.map((r) => r.email) },
+            "🚨 Admin-Konten mit Platzhalter-Adresse @radpark.dev auf einem Server! Entfernen mit: pnpm admin:revoke <adresse>",
+          );
+        }
+      })
+      .catch(() => undefined);
+  }
 
   // Verbindung zu den Fahrradständern (über den MQTT-Broker)
   const mqtt = new MqttGateway(app.log);
@@ -77,6 +106,7 @@ export async function buildApp() {
   // stattdessen Redis als gemeinsamen Speicher verwenden.
   await app.register(rateLimit, {
     global: false,
+    keyGenerator: clientIp,
     errorResponseBuilder: (_req, ctx) =>
       new AppError(429, "TOO_MANY_REQUESTS", `Zu viele Anfragen – bitte in ${Math.ceil(ctx.ttl / 1000)} s erneut versuchen`, {
         retryAfterSeconds: Math.ceil(ctx.ttl / 1000),

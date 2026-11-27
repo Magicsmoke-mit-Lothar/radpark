@@ -81,7 +81,7 @@ function LoginForm({ onSuccess }: { onSuccess: (u: User) => void }) {
         {step === 'email' ? (
           <label>
             E-Mail
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@radpark.dev" autoFocus required />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="deine@adresse.de" autoFocus required />
           </label>
         ) : (
           <>

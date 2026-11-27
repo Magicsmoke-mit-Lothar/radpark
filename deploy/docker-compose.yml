@@ -60,6 +60,8 @@ services:
       PORT: "3000"
       LOG_LEVEL: info
       TRUST_PROXY: "true"
+      # Hinter Cloudflare-Tunnel: "cf-connecting-ip" (echte Besucher-IP für die IP-Bremse)
+      CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
       BUSINESS_TIMEZONE: Europe/Berlin
       # --- Sicherheit: im Server-Betrieb AUS ---
       DEV_ROUTES: "false"
@@ -74,6 +76,8 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY (sk_test_…) in deploy/.env setzen}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       MIN_START_BALANCE_CENTS: "100"
+      # Wer wird beim Anlegen der Testdaten (stage:seed) Admin? → DEINE echte Adresse
+      SEED_ADMIN_EMAIL: ${ADMIN_EMAIL:-}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s

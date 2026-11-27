@@ -115,8 +115,14 @@ Ohne Handy geht es auch im Browser: im App-Terminal `w` drücken (statt der Kart
 pnpm dev:admin        # → http://localhost:5173 (Backend muss laufen)
 ```
 
-Anmelden mit **admin@radpark.dev** (wird von `pnpm db:seed` angelegt), Code wie gewohnt.
-Weitere Admins freischalten: `pnpm admin:grant name@example.com`
+Anmelden in der **Entwicklung** mit **admin@radpark.dev** (legt `pnpm db:seed` nur im
+Entwicklungsmodus an – der Code steht dort ja ohnehin in der Antwort). Auf einem **Server** wird
+stattdessen deine echte Adresse Admin (`ADMIN_EMAIL` in `deploy/.env`).
+Admins verwalten: `pnpm admin:grant name@example.com` · `pnpm admin:revoke name@example.com`
+(Docker: `pnpm stage:admin-grant …` / `pnpm stage:admin-revoke …`)
+
+> ⚠️ Niemals eine erfundene Adresse (z. B. `…@radpark.dev`) auf einem Server zum Admin machen:
+> Wer die Domain kauft, bekommt die Login-Codes. Das Backend warnt beim Start, falls doch.
 
 | Seite | Was man sieht / tun kann |
 |---|---|

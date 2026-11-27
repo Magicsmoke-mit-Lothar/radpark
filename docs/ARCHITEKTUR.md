@@ -141,6 +141,10 @@ Umgesetzt im Server-Betrieb (`deploy/`, Schritt 6a):
 - Datenbank und Backend nicht von außen erreichbar – nur über Caddy (später mit HTTPS)
 - Stripe-Webhooks nur mit gültiger Signatur; Gutschrift trotzdem erst nach Rückfrage bei Stripe
 - Container laufen nicht als root
+- Admin nur mit echter Adresse (`ADMIN_EMAIL`); Warnung beim Start bei Platzhalter-Admins
+- Simulator-Steuerung nur am eigenen Dock (sonst könnten Tester fremde Parkvorgänge beenden)
+- Echte Besucher-IP hinter Cloudflare über `CF-Connecting-IP` (`CLIENT_IP_HEADER`) – sonst zählte
+  die IP-Bremse alle Nutzer als einen
 
 Noch offen vor dem ersten echten Ständer:
 

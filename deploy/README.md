@@ -15,12 +15,12 @@ Ständer/Sim ─:1884─▶ Mosquitto (Passwort + Rechte pro Ständer)
 ```bash
 cp deploy/.env.example deploy/.env     # einmalig: Passwörter + Stripe-TESTschlüssel eintragen
 pnpm stage:up                          # bauen & starten (dauert beim ersten Mal ein paar Minuten)
-pnpm stage:seed                        # Teststationen + admin@radpark.dev anlegen (löscht Staging-Daten!)
+pnpm stage:seed                        # Teststationen anlegen, ADMIN_EMAIL wird Admin (löscht Staging-Daten!)
 ```
 
 | Adresse | Was |
 |---|---|
-| http://localhost:8088 | Admin-Dashboard (Login: admin@radpark.dev) |
+| http://localhost:8088 | Admin-Dashboard (Login: deine Adresse aus `ADMIN_EMAIL`) |
 | http://localhost:8088/api/health | Backend |
 | http://localhost:8025 | **Mailpit** – hier landen alle Login-Codes (es wird nichts wirklich verschickt) |
 
@@ -45,7 +45,9 @@ Parken klappt mit den 🛠-Knöpfen (der Simulator läuft als eigener Container)
 | MQTT-Broker | ohne Passwort | **Passwort + Rechte pro Ständer** (`mosquitto/acl`) |
 | Datenbank & Backend | direkt erreichbar | **nur intern**, von außen nur Caddy |
 | Bezahlung | Testgutschrift oder Stripe-Test | Stripe-**Test**modus |
-| Simulator-Knöpfe | an | an (`SIMULATOR_CONTROL`), bis echte Ständer kommen |
+| Simulator-Knöpfe | an | an (`SIMULATOR_CONTROL`) – **nur am eigenen Dock** (Admins: alle) |
+| Admin | admin@radpark.dev | **nur deine echte Adresse** (`ADMIN_EMAIL`) |
+| IP-Bremse | Verbindungs-IP | hinter Cloudflare: `CLIENT_IP_HEADER=cf-connecting-ip` |
 
 **MQTT-Rechte:** Jeder Ständer meldet sich mit seinem Stationscode als Benutzernamen an und darf nur
 *seine eigenen* Topics benutzen – BER-001 kann sich nicht als BER-002 ausgeben. Im Testbetrieb haben

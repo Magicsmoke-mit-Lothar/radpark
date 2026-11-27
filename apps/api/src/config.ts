@@ -47,6 +47,14 @@ const ConfigSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  /**
+   * Header mit der ECHTEN Besucher-IP, den ein vorgeschalteter Dienst setzt – hinter Cloudflare:
+   * "cf-connecting-ip" (Cloudflare überschreibt ihn immer → nicht fälschbar). Leer = IP-Adresse
+   * der Verbindung bzw. von Caddy (lokal/Heimnetz). NUR setzen, wenn ALLE Anfragen über diesen
+   * Dienst kommen – sonst könnte ein Besucher den Header selbst mitschicken.
+   */
+  CLIENT_IP_HEADER: z.string().trim().toLowerCase().optional().or(z.literal("").transform(() => undefined)),
+
   // --- Bremsen gegen Missbrauch (pro IP-Adresse) ---
   /** Code-Anforderungen pro Stunde und IP (zusätzlich gilt: pro E-Mail max. 1 / 60 s und 5 / Stunde) */
   LOGIN_CODE_REQUESTS_PER_HOUR: z.coerce.number().int().positive().default(20),
