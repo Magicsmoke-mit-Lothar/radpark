@@ -14,6 +14,11 @@ const ConfigSchema = z.object({
   MQTT_URL: z.string().url().default("mqtt://localhost:1883"),
   PORT: z.coerce.number().int().default(3000),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  /** Entwickler-Endpunkte (/dev/*) einschalten – NIEMALS in Produktion */
+  DEV_ROUTES: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 const parsed = ConfigSchema.safeParse(process.env);

@@ -1,0 +1,58 @@
+/**
+ * Entwickler-Werkzeuge – NUR für die lokale Entwicklung!
+ * Werden nur geladen, wenn in der .env DEV_ROUTES=true steht.
+ * Damit kann man Befehle an Ständer schicken, bevor es Login & Parkvorgänge gibt (Schritt 3).
+ */
+import type { FastifyInstance } from "fastify";
+import { and, desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { CommandType } from "@radpark/protocol";
+import { db } from "../db/client";
+import { docks, events, stations } from "../db/schema";
+import { recordEvent } from "../events";
+import { CommandTimeoutError, type MqttGateway } from "../mqtt/connection";
+
+const CommandParams = z.object({ code: z.string(), number: z.coerce.number().int().positive() });
+const CommandBody = z.object({ type: CommandType });
+
+export async function devRoutes(app: FastifyInstance, opts: { mqtt: MqttGateway }) {
+  /**
+   * POST /dev/stations/BER-001/docks/3/command   Body: {"type": "unlock"}
+   * → schickt den Befehl an den Ständer und wartet auf die Antwort
+   */
+  app.post("/dev/stations/:code/docks/:number/command", async (req, reply) => {
+    const params = CommandParams.safeParse(req.params);
+    const body = CommandBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ error: 'Erwartet z. B. POST /dev/stations/BER-001/docks/3/command mit {"type":"unlock"}' });
+    }
+    const { code, number } = params.data;
+
+    const [dock] = await db
+      .select({ stationId: stations.id, dockId: docks.id })
+      .from(docks)
+      .innerJoin(stations, eq(stations.id, docks.stationId))
+      .where(and(eq(stations.code, code), eq(docks.number, number)));
+    if (!dock) return reply.code(404).send({ error: `Dock ${number} an Station ${code} gibt es nicht` });
+
+    const ids = { stationId: dock.stationId, dockId: dock.dockId };
+    await recordEvent({ ...ids, type: "command.sent", payload: { type: body.data.type, via: "dev" } });
+
+    try {
+      const ack = await opts.mqtt.sendCommand(code, body.data.type, number);
+      await recordEvent({ ...ids, type: ack.ok ? "command.acked" : "command.failed", payload: { ...ack } });
+      return reply.code(ack.ok ? 200 : 409).send(ack);
+    } catch (err) {
+      if (err instanceof CommandTimeoutError) {
+        await recordEvent({ ...ids, type: "command.failed", payload: { error: "TIMEOUT" } });
+        return reply.code(504).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  /** GET /dev/events → die letzten 50 Einträge aus dem Event-Log */
+  app.get("/dev/events", async () => {
+    return db.select().from(events).orderBy(desc(events.id)).limit(50);
+  });
+}

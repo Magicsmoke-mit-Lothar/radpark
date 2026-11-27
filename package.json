@@ -11,6 +11,8 @@
     "db:migrate": "pnpm --filter @radpark/api db:migrate",
     "db:seed": "pnpm --filter @radpark/api db:seed",
     "dev:api": "pnpm --filter @radpark/api dev",
+    "sim": "pnpm --filter @radpark/simulator start",
+    "dev:reset": "docker compose restart mosquitto && pnpm db:seed && rm -f apps/simulator/.sim-state.json",
     "typecheck": "pnpm -r typecheck"
   }
 }

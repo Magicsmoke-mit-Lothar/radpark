@@ -58,3 +58,21 @@ beendet, Preis berechnet.
 2. Nach **jeder** Zustandsänderung eines Docks den neuen Zustand senden (retained).
 3. Unbekannte Felder ignorieren, unbekannte Befehle mit `ok: false, error: "UNKNOWN_COMMAND"` beantworten.
 4. Breaking Changes → neue Protokollversion (`v: 2`), Backend unterstützt eine Übergangszeit beide.
+5. **Sicherheits-Timeout:** Ein entriegelter Bügel, an dem nichts passiert, schließt nach einer
+   festen Zeit (Simulator: 60 s) von selbst und meldet den neuen Zustand.
+6. Nach dem (Wieder-)Verbinden: zuerst `status {online: true}`, dann den Zustand **aller** Docks senden.
+7. Ein klemmendes Schloss (`jammed`) lehnt alle Befehle mit `LOCK_JAMMED` ab.
+
+## Referenz-Implementierung
+
+[`apps/simulator/src/station.ts`](../apps/simulator/src/station.ts) verhält sich genau nach diesen
+Regeln und ist die Vorlage für die spätere ESP32-Firmware.
+
+## Wie das Backend reagiert
+
+| Ständer meldet | Backend tut |
+|---|---|
+| `status online: true/false` | `stations.online` setzen, Event `station.online`/`station.offline` |
+| Dock-Zustand mit `bikePresent` geändert | Event `dock.bike_detected` / `dock.bike_removed` |
+| Dock `jammed` oder `fault` | Dock auf `out_of_service` setzen, Event `dock.fault`. **Wieder freigeben** soll bewusst ein Mensch (Admin), nicht die Hardware. |
+| Nachricht älter als der gespeicherte Zustand | ignorieren (kann bei Funklöchern verspätet ankommen) |

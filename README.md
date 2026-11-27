@@ -8,7 +8,7 @@ Stellplatz, schließen ihr Rad im Ständer ein und bezahlen die Parkzeit.
 ```
 apps/
   api/            Backend (Fastify + Drizzle + PostgreSQL/PostGIS)
-  simulator/      (Schritt 2) simulierte Fahrradständer – ersetzt die Hardware, bis es einen Prototyp gibt
+  simulator/      simulierte Fahrradständer – ersetzen die Hardware, bis es einen Prototyp gibt
   mobile/         (Schritt 4) App für Radfahrer (Expo / React Native)
   admin/          (Schritt 5) Web-Dashboard für Betreiber (Next.js)
 packages/
@@ -39,10 +39,45 @@ Ausprobieren (im Browser oder mit `curl`):
 | http://localhost:3000/stations?lat=52.52&lng=13.405&radius=1500 | Stationen im Umkreis von 1,5 km, nach Entfernung sortiert |
 | http://localhost:3000/stations/<id> | Eine Station mit allen Stellplätzen |
 
-Nützliche Befehle:
+## Simulator: Fahrradständer ohne Hardware
+
+Öffne ein **zweites Terminal** (das Backend läuft im ersten weiter):
+
+```bash
+pnpm sim
+```
+
+Der Simulator holt sich die Stationsliste vom Backend und verbindet für jede Station einen
+simulierten Ständer mit dem MQTT-Broker. In der API steht danach `"online": true`.
+
+Ein kompletter Durchlauf zum Ausprobieren:
+
+```bash
+# Terminal 3: Backend befiehlt "Dock 3 an BER-001 entriegeln" (später macht das die App)
+curl -X POST localhost:3000/dev/stations/BER-001/docks/3/command \
+     -H 'content-type: application/json' -d '{"type":"unlock"}'
+```
+
+```text
+# im Simulator-Terminal:
+sim> liste BER-001          → Dock 3 zeigt 🔓
+sim> parken BER-001 3       → Rad erkannt, Bügel schließt → 🚲
+sim> stoerung BER-002 1     → Dock wird im Backend "out_of_service"
+sim> offline BER-003        → Stromausfall: Backend zeigt die Station nach Sekunden als offline
+sim> online BER-003
+sim> hilfe                  → alle Befehle
+```
+
+Was im Backend passiert ist, zeigt das Event-Log: http://localhost:3000/dev/events
+
+> Die `/dev/*`-Endpunkte funktionieren nur mit `DEV_ROUTES=true` in `apps/api/.env` und sind
+> ausschließlich für die Entwicklung gedacht.
+
+## Nützliche Befehle
 
 ```bash
 pnpm typecheck        # TypeScript-Fehler im ganzen Projekt finden
+pnpm dev:reset        # alles auf Anfang: Testdaten neu, Broker & Simulator-Zustand geleert
 pnpm db:generate      # nach Änderungen an apps/api/src/db/schema.ts: neue Migration erzeugen
 pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 ```
@@ -50,7 +85,7 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 ## Fahrplan
 
 - [x] **Schritt 1 – Fundament:** Monorepo, Docker, Datenmodell, Ständer-Protokoll, Stations-API
-- [ ] **Schritt 2 – Ständer-Simulator + MQTT:** simulierte Ständer melden sich, Backend sieht online/offline und Belegung live
+- [x] **Schritt 2 – Ständer-Simulator + MQTT:** simulierte Ständer melden sich, Backend sieht online/offline und Belegung live
 - [ ] **Schritt 3 – Parkvorgang:** Nutzer-Login, reservieren → entriegeln → einstellen → abholen, Preisberechnung, Event-Log
 - [ ] **Schritt 4 – Mobile App:** Karte, Station wählen, parken, Live-Status
 - [ ] **Schritt 5 – Bezahlung + Admin-Dashboard:** Stripe (Testmodus), Betreiber-Übersicht, Störungen
