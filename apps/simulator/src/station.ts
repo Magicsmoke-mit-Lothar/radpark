@@ -6,6 +6,8 @@
 import mqtt, { type MqttClient } from "mqtt";
 import {
   CommandMsg,
+  SimActionMsg,
+  simTopics,
   PROTOCOL_VERSION,
   decode,
   nowIso,
@@ -67,11 +69,14 @@ export class SimStation {
     this.client.on("connect", async () => {
       this.opts.log(`🟢 ${this.code} verbunden`);
       await this.client!.subscribeAsync(topics.command(this.code), { qos: 1 });
+      // Nur Simulator: "physische" Handgriffe auf Knopfdruck (z. B. aus der App im Entwicklungsmodus)
+      await this.client!.subscribeAsync(simTopics.subscribeStation(this.code), { qos: 1 });
       await this.publishStatus(true);
       for (const n of this.docks.keys()) await this.publishDock(n);
     });
 
-    this.client.on("message", (_topic, payload) => {
+    this.client.on("message", (topic, payload) => {
+      if (topic.startsWith("sim/")) return void this.handleSimAction(topic, payload);
       const cmd = decode(CommandMsg, payload);
       if (cmd) void this.handleCommand(cmd);
     });
@@ -127,6 +132,16 @@ export class SimStation {
       default:
         return this.ack(cmd.cmdId, false, "UNKNOWN_COMMAND");
     }
+  }
+
+  /** sim/stations/{code}/docks/{n}/action {"action":"park"|"take"} → so tun, als hätte ein Mensch das getan */
+  private async handleSimAction(topic: string, payload: Buffer) {
+    const msg = decode(SimActionMsg, payload);
+    const dock = Number(topic.split("/")[4]);
+    if (!msg || !Number.isInteger(dock)) return;
+    this.opts.log(`🛠  ${this.code} Dock ${dock}: ferngesteuert "${msg.action === "park" ? "Rad einstellen" : "Rad entnehmen"}"`);
+    const error = msg.action === "park" ? await this.parkBike(dock) : await this.takeBike(dock);
+    if (error) this.opts.log(`❌ ${error}`);
   }
 
   // -------------------------------------------------------------------------

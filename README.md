@@ -91,9 +91,11 @@ Was im Backend passiert ist, zeigt das Event-Log: http://localhost:3000/dev/even
 4. Öffne Expo Go und scanne den QR-Code. Die App lädt (beim ersten Mal ca. 30 Sekunden).
 5. Melde dich mit einer beliebigen E-Mail an – der Code erscheint in der App
    („Entwicklungsmodus: Dein Code ist …“, antippen zum Einsetzen).
-6. Tippe auf der Karte auf eine Station → **Hier parken** → im Simulator-Terminal
-   `parken BER-001 1` eingeben → in der App läuft die Parkzeit. **Rad abholen** →
-   im Simulator `abholen BER-001 1` → fertig.
+6. Tippe auf der Karte auf eine Station → **Hier parken** → der (simulierte) Bügel öffnet sich.
+   Jetzt das Rad „einstellen“ – entweder per Knopf **🛠 Simulator: Rad einstellen** direkt in der
+   App (nur im Entwicklungsmodus sichtbar) oder im Simulator-Terminal `parken BER-001 1`.
+   → Parkzeit läuft. **Rad abholen** → **🛠 Simulator: Rad entnehmen** (oder `abholen BER-001 1`) → fertig.
+   Ohne „Rad einstellen“ schließt der Bügel nach ca. 1 Minute wieder und die Reservierung endet.
 
 Änderst du Code in `apps/mobile/src`, aktualisiert sich die App auf dem Handy sofort von selbst.
 
@@ -195,6 +197,7 @@ Im Simulator `abholen BER-001 1` → Vorgang beendet, Preis berechnet: `curl loc
 | `POST /wallet/topups` · `/wallet/topups/:id/confirm` | ✔ | Aufladung starten · nach Bezahlung bestätigen |
 | `GET /admin/overview`, `/admin/stations`, `/admin/sessions/open`, `/admin/events` | Admin | Dashboard-Daten |
 | `POST /admin/docks/:id/release` · `/disable` · `/command` | Admin | Dock freigeben · sperren · Service-Befehl |
+| `POST /dev/stations/:code/docks/:n/simulate` | – | Nur Entwicklung: Simulator „Rad einstellen/entnehmen“ lassen |
 | `POST /dev/...`, `GET /dev/events` | – | Nur Entwicklung (`DEV_ROUTES=true`) |
 
 Fehler kommen immer als `{ "error": "CODE", "message": "…" }`, z. B. `NO_FREE_DOCK`, `ALREADY_PARKING`,

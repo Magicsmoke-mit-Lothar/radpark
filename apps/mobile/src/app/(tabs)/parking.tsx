@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
+import { DevSimButton } from '@/components/dev-sim-button';
 import { AppText, Banner, Card } from '@/components/ui';
 import { Spacing, WebTabInset } from '@/constants/theme';
 import { useNow } from '@/hooks/use-now';
@@ -72,6 +73,10 @@ function Reserved({ parking }: { parking: Parking }) {
       <AppText variant="secondary" style={styles.centerText}>
         Stell dein Rad in Platz {parking.dockNumber}. Sobald es erkannt wird, schließt der Bügel und die Parkzeit startet.
       </AppText>
+      <AppText variant="small" style={styles.centerText}>
+        Kommt kein Rad, schließt der Bügel nach etwa einer Minute wieder und die Reservierung endet.
+      </AppText>
+      <DevSimButton stationCode={parking.stationCode} dock={parking.dockNumber} action="park" />
       {cancel.isError && <Banner>{errorMessage(cancel.error)}</Banner>}
       <Button
         title="Abbrechen"
@@ -100,6 +105,7 @@ function Active({ parking }: { parking: Parking }) {
         <AppText variant="secondary" style={styles.centerText}>
           Sobald dein Rad entnommen ist, wird der Parkvorgang automatisch beendet.
         </AppText>
+        <DevSimButton stationCode={parking.stationCode} dock={parking.dockNumber} action="take" />
       </Card>
     );
   }

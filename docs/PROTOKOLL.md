@@ -63,6 +63,13 @@ beendet, Preis berechnet.
 6. Nach dem (Wieder-)Verbinden: zuerst `status {online: true}`, dann den Zustand **aller** Docks senden.
 7. Ein klemmendes Schloss (`jammed`) lehnt alle Befehle mit `LOCK_JAMMED` ab.
 
+## Nur Simulator: `sim/…` (kein Teil des Hardware-Protokolls)
+
+`sim/stations/{code}/docks/{n}/action` mit `{ "action": "park" | "take" }` lässt den **Simulator**
+so tun, als würde jemand ein Rad einstellen bzw. entnehmen. Damit funktionieren die 🛠-Knöpfe der
+App im Entwicklungsmodus. Echte Ständer abonnieren diese Topics **nie**; in Produktion sperrt die
+MQTT-Rechteverwaltung (ACL) den Bereich `sim/` komplett.
+
 ## Referenz-Implementierung
 
 [`apps/simulator/src/station.ts`](../apps/simulator/src/station.ts) verhält sich genau nach diesen

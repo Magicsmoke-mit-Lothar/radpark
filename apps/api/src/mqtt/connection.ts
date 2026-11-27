@@ -11,6 +11,8 @@ import {
   DockStateMsg,
   StationStatusMsg,
   PROTOCOL_VERSION,
+  simTopics,
+  type SimAction,
   decode,
   nowIso,
   parseTopic,
@@ -115,6 +117,11 @@ export class MqttGateway {
     await this.client.publishAsync(topics.command(stationCode), JSON.stringify(cmd), { qos: 1 });
     this.log.info({ stationCode, type, dock, cmdId: cmd.cmdId }, "Befehl gesendet");
     return ackPromise;
+  }
+
+  /** NUR Entwicklung: dem Simulator einen "physischen" Handgriff befehlen */
+  async simulate(stationCode: string, dock: number, action: SimAction) {
+    await this.client.publishAsync(simTopics.action(stationCode, dock), JSON.stringify({ action }), { qos: 1 });
   }
 
   async close() {

@@ -123,3 +123,20 @@ export function decode<T>(schema: z.ZodType<T>, payload: Buffer | string): T | n
 export function nowIso(): string {
   return new Date().toISOString();
 }
+
+// ---------------------------------------------------------------------------
+// NUR SIMULATOR – gehört NICHT zum Hardware-Protokoll!
+// Damit kann man während der Entwicklung "physische" Handgriffe auslösen
+// (Rad einstellen / entnehmen), z. B. per Knopf in der App. Echte Ständer
+// abonnieren diese Topics nie.
+// ---------------------------------------------------------------------------
+export const simTopics = {
+  /** Entwickler → Simulator: "stell ein Rad in Dock n" / "nimm das Rad aus Dock n" */
+  action: (stationCode: string, dock: number) => `sim/stations/${stationCode}/docks/${dock}/action`,
+  subscribeStation: (stationCode: string) => `sim/stations/${stationCode}/docks/+/action`,
+} as const;
+
+export const SimAction = z.enum(["park", "take"]);
+export type SimAction = z.infer<typeof SimAction>;
+export const SimActionMsg = z.object({ action: SimAction });
+export type SimActionMsg = z.infer<typeof SimActionMsg>;
