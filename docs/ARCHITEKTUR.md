@@ -105,7 +105,8 @@ Parken:    Rad entnommen → Parkvorgang beendet + Preis vom Guthaben abgebucht 
 | **TanStack Query** (`src/lib/queries.ts`) | Lädt Daten, hält sie aktuell (Stationen alle 10 s, laufendes Parken alle 2 s) |
 | `src/lib/api.ts` | Einzige Stelle, die mit dem Backend spricht – inkl. Datentypen |
 | **expo-secure-store** | Login-Token verschlüsselt auf dem Handy speichern |
-| **react-native-maps** | Karte (Google Maps auf Android). Läuft in Expo Go ohne API-Schlüssel; für den Play Store braucht es später einen. |
+| **MapLibre + OpenFreeMap** | Karte mit OpenStreetMap-Daten, ohne Google und ohne API-Schlüssel. Stationen als GeoJSON-Quelle mit Kreis-/Zahlen-Ebene (schnell auch bei vielen Stationen). Braucht eigenen nativen Code → eigene App (EAS Build), nicht Expo Go. |
+| **EAS Build** (`apps/mobile/eas.json`) | Baut die App in der Expo-Cloud: `preview` = Test-APK (spricht mit `https://api.botrics.de`), `development` = Entwickler-APK (ersetzt Expo Go) |
 | `*.web.tsx` | Browser-Ersatz für handy-spezifische Teile (Karte → Liste), nur zum Entwickeln |
 
 Fehlercodes vom Backend (`NO_FREE_DOCK` …) übersetzt `src/lib/format.ts` in deutsche Meldungen.

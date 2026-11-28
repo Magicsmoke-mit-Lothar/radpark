@@ -79,40 +79,48 @@ Was im Backend passiert ist, zeigt das Event-Log: http://localhost:3000/dev/even
 
 ## Die App auf deinem Android-Handy
 
-1. Installiere **Expo Go** aus dem Google Play Store.
-2. Handy und Rechner müssen im **selben WLAN** sein.
-3. Starte in drei Terminals:
+> **Expo Go funktioniert für RadPark nicht mehr.** Die Karte (OpenStreetMap über MapLibre) braucht
+> eigenen nativen Code, den Expo Go nicht enthält. Stattdessen gibt es zwei eigene Apps, gebaut in
+> der Expo-Cloud (EAS, Projekt `@magic_smoke_mit_lothar/radpark`):
 
-   ```bash
-   pnpm dev:api:lan    # Terminal 1: Backend – für Geräte im WLAN erreichbar (fürs Handy nötig)
-   pnpm sim            # Terminal 2: Simulator
-   pnpm dev:mobile     # Terminal 3: App-Server → zeigt einen QR-Code
-   ```
+| | **Test-APK** (`preview`) | **Entwickler-APK** (`development`) |
+|---|---|---|
+| Wofür | Ausprobieren – überall, auch für andere Tester | Weiterentwickeln (ersetzt Expo Go) |
+| App-Code | fest eingebaut | kommt live von deinem Rechner (Änderungen sofort sichtbar) |
+| Server | `https://api.botrics.de` | je nach `EXPO_PUBLIC_API_URL` beim Start von Expo |
+| Rechner muss laufen | nein (nur der Server) | ja (Expo-Server, im selben WLAN) |
 
-   > ⚠️ `dev:api:lan` macht den **Entwicklungsmodus** (Login-Code steht in der Antwort!) für ALLE
-   > Geräte im WLAN erreichbar – nur im eigenen Heimnetz benutzen. In Uni-/Firmen-/Café-WLANs
-   > stattdessen über den Tunnel testen: `EXPO_PUBLIC_API_URL=https://api.botrics.de pnpm dev:mobile`.
-   > `pnpm dev:api` (ohne `:lan`) ist nur von diesem Rechner aus erreichbar.
+**Bauen** (in `apps/mobile`, dauert inkl. Warteschlange 15 – 90 Min., kostenloser Plan: 15 Android-Builds):
+```bash
+cd apps/mobile
+npx eas-cli@latest build -p android --profile preview       # Test-APK
+npx eas-cli@latest build -p android --profile development   # Entwickler-APK
+```
+Am Ende gibt es einen Link (auch unter https://expo.dev → Projekt *radpark* → *Builds*). Den Link auf
+dem Handy öffnen → APK herunterladen → installieren (Android fragt einmal, ob Apps aus dieser Quelle
+erlaubt sind). **Neu bauen nötig** nur bei neuen nativen Bibliotheken, Änderungen an `app.json` oder
+einem SDK-Update – reine Code-Änderungen landen bei der Entwickler-APK sofort auf dem Handy.
 
-4. Öffne Expo Go und scanne den QR-Code. Die App lädt (beim ersten Mal ca. 30 Sekunden).
-5. Melde dich mit einer beliebigen E-Mail an – der Code erscheint in der App
-   („Entwicklungsmodus: Dein Code ist …“, antippen zum Einsetzen).
-6. Tippe auf der Karte auf eine Station → **Hier parken** → der (simulierte) Bügel öffnet sich.
-   Jetzt das Rad „einstellen“ – entweder per Knopf **🛠 Simulator: Rad einstellen** direkt in der
-   App (nur im Entwicklungsmodus sichtbar) oder im Simulator-Terminal `parken BER-001 1`.
-   → Parkzeit läuft. **Rad abholen** → **🛠 Simulator: Rad entnehmen** (oder `abholen BER-001 1`) → fertig.
-   Ohne „Rad einstellen“ schließt der Bügel nach ca. 1 Minute wieder und die Reservierung endet.
+**Mit der Entwickler-APK entwickeln:**
+```bash
+pnpm dev:api:lan    # Terminal 1: Backend (oder Staging: siehe unten)
+pnpm sim            # Terminal 2: Simulator
+pnpm dev:mobile     # Terminal 3: Expo-Server → in der Entwickler-APK den Rechner auswählen
+```
+> ⚠️ `dev:api:lan` macht den **Entwicklungsmodus** (Login-Code steht in der Antwort!) für ALLE
+> Geräte im WLAN erreichbar – nur im eigenen Heimnetz benutzen. In Uni-/Firmen-/Café-WLANs
+> stattdessen gegen den Server testen: `EXPO_PUBLIC_API_URL=https://api.botrics.de pnpm dev:mobile`.
 
-Änderst du Code in `apps/mobile/src`, aktualisiert sich die App auf dem Handy sofort von selbst.
+**Parken ausprobieren:** Station antippen → **Hier parken** → der (simulierte) Bügel öffnet sich →
+**🛠 Simulator: Rad einstellen** (oder im Simulator-Terminal `parken BER-001 1`) → Parkzeit läuft →
+**Rad abholen** → **🛠 Simulator: Rad entnehmen** → fertig. Ohne „Rad einstellen“ schließt der Bügel
+nach ca. 1 Minute wieder und die Reservierung endet. Die 🛠-Knöpfe gibt es nur am eigenen Dock und
+nur, solange der Server Simulator-Steuerung erlaubt.
 
-**Klappt die Verbindung nicht?**
-- „Keine Verbindung zum Server“ in der App → läuft `pnpm dev:api`? Unter *Profil* steht ganz unten,
-  welche Server-Adresse die App benutzt – öffne sie im Handy-Browser, z. B. `http://192.168.1.20:3000/health`.
-- Expo Go findet den Rechner nicht → evtl. blockiert die Linux-Firewall. Ports freigeben:
-  `sudo ufw allow 8081/tcp && sudo ufw allow 3000/tcp`
-- Im Gäste-/Uni-WLAN sind Geräte oft voneinander abgeschirmt → Handy-Hotspot benutzen.
+**Karte:** OpenStreetMap-Daten, Kartenbilder von [OpenFreeMap](https://openfreemap.org) (kostenlos,
+ohne API-Schlüssel). Quellenangabe über ⓘ oben rechts auf der Karte.
 
-Ohne Handy geht es auch im Browser: im App-Terminal `w` drücken (statt der Karte gibt es dort eine Liste).
+Ohne Handy geht es auch im Browser: im Expo-Terminal `w` drücken (statt der Karte gibt es dort eine Liste).
 
 ## Admin-Dashboard für Betreiber
 
@@ -279,7 +287,7 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
   MQTT mit Passwort + Rechten pro Ständer, Stripe-Webhook, abgeschaltete Dev-Funktionen → [deploy/README.md](deploy/README.md)
 - [x] **Schritt 6b (Teil 1) – Cloudflare-Tunnel:** öffentlich unter https://api.botrics.de / https://admin.botrics.de
   ohne offene Ports (Anleitung: [deploy/README.md](deploy/README.md))
-- [ ] **Schritt 6b (Teil 2) – Test-APK:** Android-App zum direkten Installieren (EAS Build)
+- [x] **Schritt 6b (Teil 2) – Test-APK:** Karte auf OpenStreetMap (MapLibre) umgestellt, APK per EAS Build
 - [ ] **Schritt 7 – Hardware-Prototyp:** ESP32-Firmware mit demselben Protokoll wie der Simulator
 - [ ] **Schritt 8 – Gamification:** Punkte, Streaks, Abzeichen, CO₂-Bilanz – berechnet aus dem Event-Log
 
