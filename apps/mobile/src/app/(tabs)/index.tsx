@@ -54,6 +54,7 @@ export default function MapScreen() {
         onSelect={setSelectedId}
         onDeselect={() => setSelectedId(null)}
         bottomPadding={selected ? CARD_HEIGHT : 0}
+        showUserLocation={location !== null}
       />
 
       {stations.isError && (

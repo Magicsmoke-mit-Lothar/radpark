@@ -7,8 +7,10 @@ export interface StationMapProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDeselect: () => void;
-  /** Platz unten für die Stationskarte, damit Google-Logo & Knöpfe nicht verdeckt werden */
+  /** Platz unten für die Stationskarte, damit der Kartenmittelpunkt nicht dahinter verschwindet */
   bottomPadding?: number;
+  /** Eigenen Standort anzeigen (nur wenn die Standort-Erlaubnis erteilt wurde) */
+  showUserLocation?: boolean;
 }
 
 /** grün = genug frei, orange = fast voll, rot = voll, grau = offline */
