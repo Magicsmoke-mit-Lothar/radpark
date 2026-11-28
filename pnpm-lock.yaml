@@ -94,6 +94,22 @@ importers:
         specifier: ~5.9.3
         version: 5.9.3
 
+  apps/klappe:
+    dependencies:
+      '@radpark/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      mqtt:
+        specifier: ^5.16.1
+        version: 5.16.1(supports-color@8.1.1)
+    devDependencies:
+      typescript:
+        specifier: ~7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.4.0
+        version: 8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(terser@5.51.4)(tsx@4.23.15)
+
   apps/mobile:
     dependencies:
       '@expo/ui':

@@ -105,6 +105,19 @@ EXPO_PUBLIC_API_URL=https://api.botrics.de pnpm dev:mobile
 > (`HTTP_BIND`/`MQTT_BIND=127.0.0.1`). Wichtig: Docker-Ports umgehen die Firewall (ufw) – deshalb
 > diese Einschränkung direkt in der Konfiguration.
 
+## Laptop-Klappe (zweites Gerät als Ständer)
+
+Die Seite `…/klappe/` lässt einen Laptop im Browser einen Ständer spielen (Anleitung im
+[Haupt-README](../README.md#laptop-als-klappe-ein-zweites-gerät-spielt-den-ständer)). Technisch:
+
+- Caddy leitet `/mqtt` an den **WebSocket-Eingang** von Mosquitto weiter (Port 9001, nur im
+  Docker-Netz). Von außen also nur verschlüsselt über Cloudflare: `wss://API_HOST/mqtt`.
+- Die Klappe hat einen **eigenen MQTT-Zugang** (`KLAPPE_STATION` / `KLAPPE_PASSWORD` in `.env`) und
+  darf wie jeder Ständer nur die eigenen Topics benutzen (ACL). Der Simulator lässt diese Station aus.
+- Der Einrichtungs-Link (`pnpm stage:klappe-link`) trägt das Passwort hinter dem `#` – dieser Teil wird
+  nie an einen Server geschickt; die Seite löscht ihn sofort aus der Adresszeile.
+- Passwort wechseln: `KLAPPE_PASSWORD` ändern → `pnpm stage:up` → neuen Link auf dem Laptop öffnen.
+
 ## Datensicherung
 
 Der Dienst `backup` sichert die Datenbank beim Start und jede Nacht um ca. 03:00 Uhr nach
@@ -127,7 +140,7 @@ sie regelmäßig woandershin zu kopieren (USB-Stick, Cloud-Speicher).
 | Admin nur echte Adresse (`ADMIN_EMAIL`); Admin-Funktionen **nur** über `admin.botrics.de` | Backend, Caddy |
 | Cloudflare Access vor `admin.botrics.de` | Cloudflare (selbst einrichten) |
 | Content-Security-Policy, HSTS, X-Frame-Options, nosniff | Caddy |
-| MQTT mit Passwort + Rechten pro Ständer | Mosquitto |
+| MQTT mit Passwort + Rechten pro Ständer; Laptop-Klappe mit eigenem Passwort, nur über `wss://…/mqtt` | Mosquitto, Caddy |
 | Datenbank/Backend/MQTT/Mailpit nicht von außen erreichbar | docker-compose |
 | Nur Stripe-Testmodus; Webhooks nur mit Signatur | Backend |
 | Nächtliche Datensicherung | `backup`-Dienst |

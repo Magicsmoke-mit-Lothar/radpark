@@ -111,7 +111,8 @@ export const CommandAckMsg = z.object({
 export type CommandAckMsg = z.infer<typeof CommandAckMsg>;
 
 /** Hilfsfunktion: JSON-Payload sicher einlesen und prüfen. Gibt null bei Müll zurück. */
-export function decode<T>(schema: z.ZodType<T>, payload: Buffer | string): T | null {
+// payload: ein Buffer – in Node echt, im Browser liefert mqtt.js einen nachgebauten Buffer mit demselben toString()
+export function decode<T>(schema: z.ZodType<T>, payload: { toString(): string }): T | null {
   try {
     const result = schema.safeParse(JSON.parse(payload.toString()));
     return result.success ? result.data : null;

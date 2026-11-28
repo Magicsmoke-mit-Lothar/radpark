@@ -10,6 +10,7 @@
 # Mit Cloudflare-Tunnel (COMPOSE_PROFILES=tunnel + CLOUDFLARE_TUNNEL_TOKEN in .env):
 #               https://API_HOST    / https://ADMIN_HOST
 #               mqtt://localhost:1884        Broker für Ständer (nur mit Passwort)
+#               …/klappe/                    Laptop als Ständer ("Klappe"), siehe README
 name: radpark-stage
 
 services:
@@ -38,6 +39,8 @@ services:
       MQTT_API_PASSWORD: ${MQTT_API_PASSWORD:?MQTT_API_PASSWORD in deploy/.env setzen}
       MQTT_STATION_PASSWORD: ${MQTT_STATION_PASSWORD:?MQTT_STATION_PASSWORD in deploy/.env setzen}
       MQTT_STATIONS: ${MQTT_STATIONS:-BER-001,BER-002,BER-003}
+      # Laptop-Klappe: eigener Zugang mit eigenem Passwort (leer = keine Klappe)
+      MQTT_DEVICE_LOGINS: ${KLAPPE_STATION:-}:${KLAPPE_PASSWORD:-}
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./mosquitto/acl:/mosquitto/config/acl:ro
@@ -135,6 +138,8 @@ services:
       SIM_STATION_PASSWORD: ${MQTT_STATION_PASSWORD}
       API_URL: http://api:3000
       SIM_STATE_FILE: /data/sim-state.json
+      # Diese Station ist die Laptop-Klappe → der Simulator lässt die Finger davon
+      SIM_EXCLUDE: ${KLAPPE_STATION:-}
     volumes:
       - simdata:/data
 

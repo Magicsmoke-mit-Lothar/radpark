@@ -1,6 +1,7 @@
 # Caddy: die "Eingangstür" des Servers – verteilt Anfragen nach Adresse.
 #
 #   https://API_HOST     (z. B. api.botrics.de)    → Backend         (für die App)
+#                        …/klappe/  und  …/mqtt    → Laptop-Klappe (Browser-Ständer) + MQTT-WebSocket
 #   https://ADMIN_HOST   (z. B. admin.botrics.de)  → Admin-Dashboard + /api
 #   http://localhost:8088 (Heimnetz / ohne Tunnel) → Admin-Dashboard + /api
 #
@@ -41,6 +42,25 @@
 	header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 }
 
+# Laptop-Klappe: Browser-Seite /klappe/ + MQTT über WebSocket /mqtt (zum Broker im Docker-Netz).
+# Der Broker verlangt Stationscode + Passwort und erlaubt jeder Station NUR ihre eigenen Topics.
+(klappe) {
+	handle /mqtt {
+		reverse_proxy mosquitto:9001
+	}
+	redir /klappe /klappe/ 308
+	handle_path /klappe/* {
+		# Skripte nur von hier; Verbindungen nur zur selben Adresse (wss://…/mqtt).
+		# worker-src blob: → mqtt.js zählt seine Herzschläge in einem Worker, damit die Verbindung
+		# auch dann hält, wenn der Tab im Hintergrund liegt (Browser bremsen dort normale Timer).
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' wss://{hostport} ws://{hostport}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		header Cache-Control "no-cache"
+		root * /srv/klappe
+		try_files {path} /index.html
+		file_server
+	}
+}
+
 (dashboard_und_api) {
 	handle_path /api/* {
 		reverse_proxy api:3000 {
@@ -59,17 +79,21 @@
 http://{$API_HOST:api.example.invalid} {
 	import sicherheit
 	import nur_https
-	# Die API liefert (fast) nur JSON – Browser sollen hier gar nichts ausführen
-	header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"
+	import klappe
 
-	# Admin- und Entwickler-Funktionen gibt es hier NICHT – nur über admin.botrics.de,
-	# das zusätzlich von Cloudflare Access geschützt ist
-	@gesperrt path /admin /admin/* /dev /dev/*
-	respond @gesperrt "Not found" 404
+	handle {
+		# Die API liefert (fast) nur JSON – Browser sollen hier gar nichts ausführen
+		header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"
 
-	reverse_proxy api:3000 {
-		# Nicht vom Besucher vorgeben lassen
-		header_up -X-Forwarded-Prefix
+		# Admin- und Entwickler-Funktionen gibt es hier NICHT – nur über admin.botrics.de,
+		# das zusätzlich von Cloudflare Access geschützt ist
+		@gesperrt path /admin /admin/* /dev /dev/*
+		respond @gesperrt "Not found" 404
+
+		reverse_proxy api:3000 {
+			# Nicht vom Besucher vorgeben lassen
+			header_up -X-Forwarded-Prefix
+		}
 	}
 }
 
@@ -85,6 +109,9 @@ http://{$ADMIN_HOST:admin.example.invalid} {
 #     Domain (SITE_ADDRESS=radpark.example.com → Caddy holt dann selbst ein HTTPS-Zertifikat) ---
 {$SITE_ADDRESS::80} {
 	import sicherheit
-	import csp_dashboard
-	import dashboard_und_api
+	import klappe
+	handle {
+		import csp_dashboard
+		import dashboard_und_api
+	}
 }

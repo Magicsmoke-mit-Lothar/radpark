@@ -13,6 +13,7 @@
  *   SIM_STATIONS     Stationen ohne Backend vorgeben, z. B. "BER-001:8,BER-002:6"
  *   SIM_RELOCK_SECONDS  offener Bügel schließt automatisch nach … Sekunden (Standard: 60)
  *   SIM_STATION_PASSWORD Passwort am gesicherten Broker (Benutzername = Stationscode)
+ *   SIM_EXCLUDE      Stationen, die NICHT simuliert werden (z. B. "LAB-001" = die Laptop-Klappe)
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
@@ -29,7 +30,18 @@ const log = (msg: string) => console.log(`  ${msg}`);
 // ---------------------------------------------------------------------------
 // 1. Welche Stationen gibt es?
 // ---------------------------------------------------------------------------
+// Stationen, die ein echtes Gerät (oder die Laptop-Klappe) übernimmt – sonst würden sich beide
+// gegenseitig vom Broker werfen (gleiche Client-ID)
+const EXCLUDE = new Set((process.env.SIM_EXCLUDE ?? "").split(",").map((c) => c.trim().toUpperCase()).filter(Boolean));
+
 async function loadStationList(): Promise<{ code: string; dockCount: number }[]> {
+  const all = await loadAllStations();
+  const skipped = all.filter((s) => EXCLUDE.has(s.code));
+  if (skipped.length) console.log(`ℹ️  Nicht simuliert (echtes Gerät): ${skipped.map((s) => s.code).join(", ")}`);
+  return all.filter((s) => !EXCLUDE.has(s.code));
+}
+
+async function loadAllStations(): Promise<{ code: string; dockCount: number }[]> {
   if (process.env.SIM_STATIONS) {
     return process.env.SIM_STATIONS.split(",").map((entry) => {
       const [code, count] = entry.trim().split(":");

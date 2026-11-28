@@ -11,6 +11,7 @@ apps/
   simulator/      simulierte Fahrradständer – ersetzen die Hardware, bis es einen Prototyp gibt
   mobile/         App für Radfahrer (Expo / React Native) – Android zuerst
   admin/          Web-Dashboard für Betreiber (Vite + React)
+  klappe/         "Klappe": ein zweiter Laptop spielt im Browser einen echten Ständer (MQTT über WebSocket)
 packages/
   protocol/       Der "Vertrag" zwischen Backend und Ständer (MQTT-Topics + Nachrichtenformate)
 infra/            Konfiguration für Datenbank und MQTT-Broker (Entwicklung)
@@ -76,6 +77,46 @@ Was im Backend passiert ist, zeigt das Event-Log: http://localhost:3000/dev/even
 >
 > Die `/dev/*`-Endpunkte funktionieren nur mit `DEV_ROUTES=true` in `apps/api/.env` und sind
 > ausschließlich für die Entwicklung gedacht.
+
+## Laptop als Klappe (ein zweites Gerät spielt den Ständer)
+
+Statt des Simulators kann ein **zweiter Laptop** einen Ständer spielen – mit Knöpfen, Tönen und einer
+Grafik des Docks. Er meldet sich wie echte Hardware mit Stationscode + Passwort am MQTT-Broker an
+(im Browser, über `wss://api.botrics.de/mqtt`) und bekommt eine **eigene Station** (`LAB-001`, 1 Dock),
+die der Simulator in Ruhe lässt. Auf dem Laptop muss nichts installiert werden.
+
+**Einmalig auf dem Server** (ist auf diesem Rechner schon erledigt):
+
+```bash
+# 1. In deploy/.env:  KLAPPE_STATION=LAB-001  und  KLAPPE_PASSWORD=<openssl rand -hex 16>
+pnpm stage:up
+# 2. Station anlegen (löscht nichts!): Code, Name, Docks, Breitengrad, Längengrad
+pnpm stage:station-add LAB-001 "Klappe (Laptop)" 1 52.5163 13.3777
+# 3. Einrichtungs-Link ausgeben – enthält das Passwort, also nur selbst benutzen
+pnpm stage:klappe-link
+```
+
+**Auf dem Klappen-Laptop:** den Link in Chrome, Firefox oder Edge öffnen und einmal auf die Seite
+klicken (sonst darf der Browser keine Töne abspielen). Danach merkt sich der Laptop alles und
+verbindet sich beim nächsten Öffnen von `https://api.botrics.de/klappe/` von selbst.
+
+**Durchspielen mit dem Handy:**
+
+1. App → Station **„Klappe (Laptop)“** → **Hier parken** → auf dem Laptop: gelber Rahmen,
+   Alarmton, **„ENTRIEGELT“**, der Riegel fährt in der Grafik ein.
+2. Laptop: **🚲 Rad einstellen** → **🔒 Bügel schließen** (oder <kbd>Leertaste</kbd>) → in der App läuft die Parkzeit.
+3. App: **Rad abholen** → Laptop zeigt wieder **ENTRIEGELT** → **↩︎ Rad entnehmen** → in der App ist
+   der Vorgang beendet und abgerechnet → **Bügel schließen**.
+
+Gut zu wissen:
+- Bügel **ohne Rad** schließen = Reservierung abgebrochen (wie am echten Ständer).
+- Nach 2 Minuten ohne Handgriff schließt der Bügel von selbst (einstellbar; 0 = nie).
+- Option „Bügel schließt automatisch, sobald ein Rad erkannt wird“ = Verhalten der echten Hardware.
+- **⚡ Stromausfall** trennt hart → das Backend meldet die Station nach wenigen Sekunden offline
+  („Last Will“). Das passiert auch, wenn der Laptop zugeklappt wird oder das WLAN weg ist.
+- Pro Station nur **ein** Tab bzw. Laptop – zwei würden sich beim Broker gegenseitig hinauswerfen.
+- Entwicklung ohne Docker: `pnpm dev:klappe` → http://localhost:5175/klappe/ (Broker `ws://localhost:9001`,
+  beliebiges Passwort), Station anlegen mit `pnpm station:add …`, Simulator mit `SIM_EXCLUDE=LAB-001 pnpm sim`.
 
 ## Die App auf deinem Android-Handy
 
@@ -270,6 +311,7 @@ pnpm typecheck        # TypeScript-Fehler im ganzen Projekt finden
 pnpm test             # automatische Tests ausführen
 pnpm dev:reset        # alles auf Anfang: Testdaten neu, Broker & Simulator-Zustand geleert
 pnpm db:generate      # nach Änderungen an apps/api/src/db/schema.ts: neue Migration erzeugen
+pnpm station:add LAB-002 "Name" 2 52.52 13.40   # Station anlegen/ändern, OHNE Daten zu löschen
 pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 ```
 
@@ -288,6 +330,7 @@ pnpm infra:down       # Docker-Container stoppen (Daten bleiben erhalten)
 - [x] **Schritt 6b (Teil 1) – Cloudflare-Tunnel:** öffentlich unter https://api.botrics.de / https://admin.botrics.de
   ohne offene Ports (Anleitung: [deploy/README.md](deploy/README.md))
 - [x] **Schritt 6b (Teil 2) – Test-APK:** Karte auf OpenStreetMap (MapLibre) umgestellt, APK per EAS Build
+- [x] **Schritt 6c – Laptop-Klappe:** zweites Gerät als Ständer im Browser (MQTT über WebSocket, eigener Zugang)
 - [ ] **Schritt 7 – Hardware-Prototyp:** ESP32-Firmware mit demselben Protokoll wie der Simulator
 - [ ] **Schritt 8 – Gamification:** Punkte, Streaks, Abzeichen, CO₂-Bilanz – berechnet aus dem Event-Log
 

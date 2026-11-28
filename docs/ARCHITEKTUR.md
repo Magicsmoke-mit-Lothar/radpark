@@ -118,6 +118,13 @@ denselben Backend-Endpunkten unter `/admin/*`. Zugriff nur mit Rolle `admin` (`u
 Rechteprüfung passiert **im Backend** (`requireAdmin`), nicht im Browser – das Dashboard selbst
 ist nur eine Oberfläche. Jede Admin-Aktion wird mit der Admin-ID im Event-Log gespeichert.
 
+## Laptop-Klappe (`apps/klappe`)
+
+Eine Browser-Seite (Vite + TypeScript, ohne Framework), mit der ein zweites Gerät einen **echten
+Ständer** spielt: eigene Station mit eigenem MQTT-Zugang, MQTT über WebSocket (`/mqtt` → Mosquitto
+Port 9001), gleiches Protokoll wie Simulator und spätere Firmware (`@radpark/protocol`). Das Backend
+merkt keinen Unterschied – genau das ist der Sinn: Die Hardware ist austauschbar.
+
 ## Skalierung – wie das später wächst
 
 Das MVP läuft auf einem Server. Die Architektur ist so gewählt, dass man später ohne Umbau ausbauen kann:

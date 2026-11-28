@@ -75,6 +75,10 @@ MQTT-Rechteverwaltung (ACL) den Bereich `sim/` komplett.
 [`apps/simulator/src/station.ts`](../apps/simulator/src/station.ts) verhält sich genau nach diesen
 Regeln und ist die Vorlage für die spätere ESP32-Firmware.
 
+[`apps/klappe/src/station.ts`](../apps/klappe/src/station.ts) macht dasselbe im **Browser** (MQTT über
+WebSocket): Ein Laptop spielt einen Ständer, ein Mensch drückt „Rad einstellen“ und „Bügel schließen“.
+Sicherheits-Timeout dort: 120 s (einstellbar).
+
 ## Wie das Backend reagiert
 
 | Ständer meldet | Backend tut |

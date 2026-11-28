@@ -13,6 +13,7 @@
     "db:seed": "tsx src/db/seed.ts",
     "admin:grant": "tsx src/scripts/grant-admin.ts",
     "admin:revoke": "tsx src/scripts/revoke-admin.ts",
+    "station:add": "tsx src/scripts/add-station.ts",
     "mail:test": "tsx src/scripts/send-test-mail.ts"
   },
   "dependencies": {
